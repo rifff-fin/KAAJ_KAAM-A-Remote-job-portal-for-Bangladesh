@@ -1,72 +1,151 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import './Navbar.css'; 
 
 export default function Navbar() {
   const navigate = useNavigate();
-  const user = JSON.parse(localStorage.getItem('user') || 'null');
+  const [user, setUser] = useState(null);
+  const [time, setTime] = useState('');
+  const [mobileOpen, setMobileOpen] = useState(false);
 
-  const logout = () => {
-    localStorage.clear();
-    navigate('/login');
-  };
+  // Load user
+  useEffect(() => {
+    const stored = JSON.parse(localStorage.getItem('user') || 'null');
+    setUser(stored);
+  }, []);
 
-  const [time, setTime] = React.useState('');
-
-  React.useEffect(() => {
-    const updateTime = () => {
-      setTime(new Date().toLocaleString('en-US', {
+  // Live BD Time
+  useEffect(() => {
+    const update = () => {
+      const bd = new Date().toLocaleString('en-US', {
         timeZone: 'Asia/Dhaka',
         hour: '2-digit',
         minute: '2-digit',
-        hour12: false
-      }));
+        hour12: false,
+      });
+      setTime(bd);
     };
-    updateTime();
-    const interval = setInterval(updateTime, 1000);
-    return () => clearInterval(interval);
+    update();
+    const id = setInterval(update, 1000);
+    return () => clearInterval(id);
   }, []);
 
-  return (
-    <nav className="bg-white navbar-shadow sticky top-0 z-50">
-      <div className="container mx-auto flex justify-between items-center py-4">
-        {/* Logo */}
-        <Link to="/" className="text-2xl font-bold text-blue-600">
-          KAAJ KAAM
-        </Link>
+  const logout = () => {
+    localStorage.removeItem('user');
+    localStorage.removeItem('token');
+    setUser(null);
+    navigate('/login');
+  };
 
-        {/* Desktop Menu */}
-        <div className="hidden md:flex items-center space-x-8">
-          <Link to="/jobs" className="text-gray-700 hover:text-blue-600 font-medium">Find Work</Link>
-          <Link to="/post-job" className="text-gray-700 hover:text-blue-600 font-medium">Post Job</Link>
-          
-          {user ? (
+  return (
+    <nav className="navbar">
+      <div className="navbar-container">
+
+        {/* Logo */}
+        <Link to="/" className="navbar-logo">KAAJ KAAM</Link>
+
+        {/* Desktop Links */}
+        <div className="navbar-links">
+          <Link to="/" className="nav-link">Home</Link>
+
+          {user?.role === 'seller' && (
             <>
-              <div className="flex items-center space-x-3 text-sm">
-                <span className="font-medium">{user.name}</span>
-                <span className="text-gray-400">•</span>
-                <span className="text-blue-600 font-medium">
+              <Link to="/jobs" className="nav-link">Find Work</Link>
+              <Link to="/seller-dashboard" className="nav-link">My Gigs</Link>
+            </>
+          )}
+
+          {user?.role === 'buyer' && (
+            <>
+              <Link to="/post-job" className="nav-link">Post Job</Link>
+              <Link to="/client-dashboard" className="nav-link">My Job Posts</Link>
+            </>
+          )}
+
+          {user && (
+            <>
+              <Link to="/orders" className="nav-link">Orders</Link>
+              <Link to="/profile" className="nav-link">Profile</Link>
+
+              {/* User Info */}
+              <div className="user-info">
+                <span className="user-name">{user.name}</span>
+                <span className="user-role">
                   {user.role === 'seller' ? 'Freelancer' : 'Client'}
                 </span>
-                <span className="text-gray-400">•</span>
-                <span className="font-mono text-gray-500">{time} BD</span>
+                <span className="live-time">{time} BD</span>
               </div>
-              <button onClick={logout} className="btn-danger">
-                Logout
-              </button>
+
+              <button onClick={logout} className="btn-logout">Logout</button>
             </>
-          ) : (
+          )}
+
+          {!user && (
             <>
-              <Link to="/login" className="text-gray-700 hover:text-blue-600 font-medium">Login</Link>
-              <Link to="/signup" className="btn-primary">Sign Up</Link>
+              <Link to="/login" className="nav-link">Login</Link>
+              <Link to="/signup" className="btn-signup">Sign Up</Link>
             </>
           )}
         </div>
 
-        {/* Mobile Menu Button */}
-        <button className="md:hidden">
-          Menu
+        {/* Mobile Toggle */}
+        <button className="mobile-toggle" onClick={() => setMobileOpen(!mobileOpen)}>
+          {mobileOpen ? 'Close' : 'Menu'}
         </button>
       </div>
+
+      {/* Mobile Menu */}
+      {mobileOpen && (
+        <div className="mobile-menu">
+          <Link to="/" className="mobile-link" onClick={() => setMobileOpen(false)}>Home</Link>
+
+          {user?.role === 'seller' && (
+            <>
+              <Link to="/jobs" className="mobile-link" onClick={() => setMobileOpen(false)}>Find Work</Link>
+              <Link to="/seller-dashboard" className="mobile-link" onClick={() => setMobileOpen(false)}>My Gigs</Link>
+            </>
+          )}
+
+          {user?.role === 'buyer' && (
+            <>
+              <Link to="/post-job" className="mobile-link" onClick={() => setMobileOpen(false)}>Post Job</Link>
+              <Link to="/client-dashboard" className="mobile-link" onClick={() => setMobileOpen(false)}>My Job Posts</Link>
+            </>
+          )}
+
+          {user && (
+            <>
+              <Link to="/orders" className="mobile-link" onClick={() => setMobileOpen(false)}>Orders</Link>
+              <Link to="/profile" className="mobile-link" onClick={() => setMobileOpen(false)}>Profile</Link>
+
+              {/* User info */}
+              <div className="mobile-user-info">
+                <div>
+                  <strong>{user.name}</strong> • {user.role === 'seller' ? 'Freelancer' : 'Client'}
+                </div>
+                <div className="live-time">{time} BD</div>
+              </div>
+
+              <button
+                onClick={() => {
+                  logout();
+                  setMobileOpen(false);
+                }}
+                className="mobile-logout"
+              >
+                Logout
+              </button>
+            </>
+          )}
+
+          {!user && (
+            <>
+              <Link to="/login" className="mobile-link" onClick={() => setMobileOpen(false)}>Login</Link>
+              <Link to="/signup" className="mobile-signup" onClick={() => setMobileOpen(false)}>Sign Up</Link>
+            </>
+          )}
+        </div>
+      )}
     </nav>
   );
 }

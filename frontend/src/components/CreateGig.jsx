@@ -12,15 +12,14 @@ export default function CreateGig() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    const formData = new FormData();
-    Object.keys(form).forEach(key => formData.append(key, form[key]));
-
+    const data = new FormData();
+    Object.keys(form).forEach(key => data.append(key, form[key]));
     try {
-      await API.post('/api/gigs', formData);
-      alert('Gig created successfully!');
+      await API.post('/gigs', data);
+      alert('Gig created!');
       navigate('/seller-dashboard');
     } catch (err) {
-      alert('Error: ' + err.response?.data?.message);
+      alert(err.response?.data?.message || 'Error');
     } finally {
       setLoading(false);
     }
@@ -28,26 +27,24 @@ export default function CreateGig() {
 
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4">
-      <div className="container mx-auto max-w-2xl">
-        <div className="card">
-          <h2 className="text-3xl font-bold text-gray-800 mb-6">Create New Gig</h2>
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <input placeholder="Gig Title" onChange={e => setForm({...form, title: e.target.value})} required />
-            <textarea placeholder="Description" className="h-32" onChange={e => setForm({...form, description: e.target.value})} required />
-            <select onChange={e => setForm({...form, category: e.target.value})}>
-              <option value="web">Web Development</option>
-              <option value="design">Graphic Design</option>
-              <option value="writing">Writing</option>
-              <option value="video">Video Editing</option>
-            </select>
-            <input type="number" placeholder="Price ($)" onChange={e => setForm({...form, price: e.target.value})} required />
-            <input placeholder="Delivery Time (e.g. 3 days)" onChange={e => setForm({...form, deliveryTime: e.target.value})} required />
-            <input type="file" accept="image/*" onChange={e => setForm({...form, image: e.target.files[0]})} />
-            <button type="submit" disabled={loading} className="w-full">
-              {loading ? 'Uploading...' : 'Create Gig'}
-            </button>
-          </form>
-        </div>
+      <div className="max-w-2xl mx-auto bg-white rounded-xl shadow-lg p-8">
+        <h2 className="text-3xl font-bold mb-6">Create New Gig</h2>
+        <form onSubmit={handleSubmit} className="space-y-5">
+          <input placeholder="Title" onChange={e => setForm({ ...form, title: e.target.value })} required className="w-full p-3 border rounded-lg" />
+          <textarea placeholder="Description" className="w-full p-3 border rounded-lg h-32" onChange={e => setForm({ ...form, description: e.target.value })} required />
+          <select onChange={e => setForm({ ...form, category: e.target.value })} className="w-full p-3 border rounded-lg">
+            <option value="web">Web Development</option>
+            <option value="design">Graphic Design</option>
+            <option value="writing">Writing</option>
+            <option value="video">Video Editing</option>
+          </select>
+          <input type="number" placeholder="Price (BDT)" onChange={e => setForm({ ...form, price: e.target.value })} required className="w-full p-3 border rounded-lg" />
+          <input placeholder="Delivery (e.g. 3 days)" onChange={e => setForm({ ...form, deliveryTime: e.target.value })} required className="w-full p-3 border rounded-lg" />
+          <input type="file" accept="image/*" onChange={e => setForm({ ...form, image: e.target.files[0] })} className="w-full p-3 border rounded-lg" />
+          <button type="submit" disabled={loading} className="w-full bg-green-600 text-white py-3 rounded-lg font-bold hover:bg-green-700">
+            {loading ? 'Creating...' : 'Create Gig'}
+          </button>
+        </form>
       </div>
     </div>
   );

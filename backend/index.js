@@ -1,82 +1,38 @@
+// backend/index.js
 const express = require('express');
 const cors = require('cors');
 const http = require('http');
 const { Server } = require('socket.io');
 require('dotenv').config();
-
 const connectDB = require('./config/db');
 const authRoutes = require('./routes/auth');
 const gigRoutes = require('./routes/gig');
-const jobRoutes = require('./routes/job');
+const jobRoutes = require('./routes/job'); // ← Make sure this is imported
 
 const app = express();
 
-// Middleware
-app.use(cors());
+// CORS
+const allowedOrigins = ['http://localhost:3000', 'http://localhost:5173'];
+app.use(cors({ origin: allowedOrigins, credentials: true }));
+
 app.use(express.json());
 
-// Connect DB
-connectDB();
-
-// Routes
+// ROUTES
 app.use('/api/auth', authRoutes);
 app.use('/api/gigs', gigRoutes);
-app.use('/api/jobs', jobRoutes);
+app.use('/api/jobs', jobRoutes); // ← MUST BE HERE
 
-app.get('/', (req, res) => {
-  res.send('KAJKAM API Running');
-});
+app.get('/', (req, res) => res.send('KAAJ KAAM API Running'));
 
-// Create HTTP + Socket.IO Server
+// Socket.IO
 const server = http.createServer(app);
-const io = new Server(server, {
-  cors: {
-    origin: process.env.NODE_ENV === 'production'
-      ? 'https://kaajkaam.vercel.app'  // Your Vercel URL
-      : 'http://localhost:3000',
-    methods: ['GET', 'POST']
-  }
-});
+const io = new Server(server, { cors: { origin: allowedOrigins } });
+app.set('io', io);
+require('./sockets/chatSocket')(io);
 
-// Socket.IO Logic
-io.on('connection', (socket) => {
-  console.log('User connected:', socket.id);
-
-  // Join a chat room (orderId)
-  socket.on('join_room', (orderId) => {
-    socket.join(orderId);
-    console.log(`User ${socket.id} joined room: ${orderId}`);
+// Start
+connectDB().then(() => {
+  server.listen(8080, () => {
+    console.log('Server running on http://localhost:8080');
   });
-
-  // Leave a chat room
-  socket.on('leave_room', (orderId) => {
-    socket.leave(orderId);
-    console.log(`User ${socket.id} left room: ${orderId}`);
-  });
-
-  // Send message
-  socket.on('send_message', (data) => {
-    io.to(data.orderId).emit('receive_message', {
-      ...data,
-      time: new Date().toLocaleTimeString('en-US', {
-        timeZone: 'Asia/Dhaka',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: false
-      })
-    });
-  });
-
-  // Disconnect
-  socket.on('disconnect', () => {
-    console.log('User disconnected:', socket.id);
-  });
-});
-
-// Start Server
-const PORT = process.env.PORT || 8080;
-server.listen(PORT, () => {
-  console.log(`ServerWorking ${PORT} এ`);
-  console.log(`Socket.IO Ready on ws://localhost:${PORT}`);
 });

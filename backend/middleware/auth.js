@@ -1,17 +1,18 @@
+// backend/middleware/auth.js
 const jwt = require('jsonwebtoken');
-const JWT_SECRET = process.env.JWT_SECRET || 'kajkam-secret-2025';
 
 const protect = (req, res, next) => {
-  const token = req.headers.authorization?.split(' ')[1];
-
-  if (!token) return res.status(401).json({ message: "No token, access denied" });
+  const token = req.header('x-auth-token');
+  if (!token) {
+    return res.status(401).json({ message: 'No token, access denied' });
+  }
 
   try {
-    const decoded = jwt.verify(token, JWT_SECRET);
-    req.user = decoded;
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'kajkam-secret-2025');
+    req.user = decoded; // { id, role }
     next();
   } catch (err) {
-    res.status(401).json({ message: "Token invalid" });
+    res.status(401).json({ message: 'Token invalid' });
   }
 };
 

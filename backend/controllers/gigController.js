@@ -1,3 +1,4 @@
+
 const Gig = require('../models/Gig');
 const cloudinary = require('../config/cloudinary');
 
@@ -40,7 +41,6 @@ exports.getAllGigs = async (req, res) => {
   res.json(gigs);
 };
 
-// ADD THIS
 exports.getGig = async (req, res) => {
   try {
     const gig = await Gig.findById(req.params.id).populate('seller', 'name email');

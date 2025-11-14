@@ -8,7 +8,7 @@ export default function Orders() {
   useEffect(() => {
     const fetchOrders = async () => {
       try {
-        const res = await API.get('/api/orders');
+        const res = await API.get('/orders'); // ← NO /api
         setOrders(res.data);
       } catch (err) {
         console.error(err);

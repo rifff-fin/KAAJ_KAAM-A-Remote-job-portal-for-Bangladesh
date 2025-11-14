@@ -1,13 +1,13 @@
-//EDvqtOm3xuI5ndMu
+// backend/config/db.js
 const mongoose = require('mongoose');
 
 const connectDB = async () => {
   try {
-    await mongoose.connect(process.env.MONGO_CONN);
-    console.log("MongoDB Connected");
+    await mongoose.connect(process.env.MONGO_CONN); // ← NO OPTIONS!
+    console.log('MongoDB Connected');
   } catch (err) {
-    console.error("DB Connection Error:", err);
-    process.exit(1);
+    console.error('DB Connection Error:', err.message);
+    throw err; // ← important for .catch() in index.js
   }
 };
 
