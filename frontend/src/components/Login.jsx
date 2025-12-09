@@ -4,20 +4,42 @@ import { Link, useNavigate } from 'react-router-dom';
 import API from '../api';
 
 export default function Login() {
-  const [form, setForm] = useState({ email: "", password: "" });
-  const navigate = useNavigate();
+  const [form, setForm] = useState({ email: '', password: '' });
+  const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
+
+  // Validation similar to Signup
+  const validate = () => {
+    const newErrors = {};
+    if (!form.email.trim()) newErrors.email = "Email required";
+    else if (!form.email.includes("@")) newErrors.email = "Enter valid email";
+
+    if (!form.password) newErrors.password = "Password required";
+    setErrors(newErrors);
+
+    return Object.keys(newErrors).length === 0;
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (!validate()) return; // stop if validation fails
+
     setLoading(true);
     try {
-      const res = await API.post("/auth/login", form);
+      // Explicitly send fields to backend
+      const res = await API.post('/auth/login', {
+        email: form.email.trim(),
+        password: form.password,
+      });
 
-      localStorage.setItem("token", res.data.token);
-      localStorage.setItem("user", JSON.stringify(res.data.user));
+      // Save token and user
+      localStorage.setItem('token', res.data.token);
+      localStorage.setItem('user', JSON.stringify(res.data.user));
 
-      navigate("/");
+      alert(`Welcome back, ${res.data.user.name}!`);
+      navigate('/'); // redirect to dashboard/home
     } catch (err) {
       alert(err.response?.data?.message || "Login failed");
     } finally {
@@ -32,21 +54,27 @@ export default function Login() {
         <h2 className="text-center text-3xl font-bold mb-6">Login</h2>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <input
-            type="email"
-            placeholder="Email"
-            className="w-full p-3 border rounded-lg"
-            value={form.email}
-            onChange={(e) => setForm({ ...form, email: e.target.value })}
-          />
+          <div>
+            <input
+              type="email"
+              placeholder="Email"
+              className="w-full p-3 border rounded-lg"
+              value={form.email}
+              onChange={(e) => setForm({ ...form, email: e.target.value })}
+            />
+            {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
+          </div>
 
-          <input
-            type="password"
-            placeholder="Password"
-            className="w-full p-3 border rounded-lg"
-            value={form.password}
-            onChange={(e) => setForm({ ...form, password: e.target.value })}
-          />
+          <div>
+            <input
+              type="password"
+              placeholder="Password"
+              className="w-full p-3 border rounded-lg"
+              value={form.password}
+              onChange={(e) => setForm({ ...form, password: e.target.value })}
+            />
+            {errors.password && <p className="text-red-500 text-sm mt-1">{errors.password}</p>}
+          </div>
 
           <button
             type="submit"

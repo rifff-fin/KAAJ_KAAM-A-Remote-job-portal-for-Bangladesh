@@ -1,24 +1,48 @@
+/* Import Google Font */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+/* Tailwind Directives */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+/* Custom Animations */
+@keyframes slide-in-right {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
 
+.animate-slide-in-right {
+  animation: slide-in-right 0.3s ease-out;
+}
+
+/* Global Reset */
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
 }
 
-html, body, #root {
+/* Base Styles */
+html,
+body,
+#root {
   height: 100%;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   background-color: #f9fafb;
   color: #111827;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
+/* Container */
 .container {
   max-width: 1200px;
   margin: 0 auto;
@@ -27,7 +51,7 @@ html, body, #root {
 
 /* Headings */
 h1, h2, h3, h4, h5, h6 {
-  margin: 0 0 1rem 0;
+  margin-bottom: 1rem;
   font-weight: 700;
   color: #111827;
 }
@@ -70,12 +94,10 @@ a:hover {
 .navbar-shadow {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
-/* Smooth Page Transitions */
-body {
-  transition: background-color 0.3s ease, color 0.3s ease;
-}
 
 /* Button Hover Animation */
-button, .btn-primary, .btn-outline {
+button,
+.btn-primary,
+.btn-outline {
   transition: all 0.3s ease-in-out;
 }

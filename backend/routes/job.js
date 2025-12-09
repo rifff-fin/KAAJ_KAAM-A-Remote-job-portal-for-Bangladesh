@@ -5,34 +5,36 @@ const { protect } = require('../middleware/auth');
 const {
   createJob,
   getJobs,
+  getMyJobs,
+  getJob,
   showInterest,
   hireFreelancer,
   unhireFreelancer,
+  completeJob
 } = require('../controllers/jobController');
 
-// ------------------------------------------------------------------
-// 1. POST /api/jobs   → client posts a new job
-// ------------------------------------------------------------------
+// Create a new job (buyer only)
 router.post('/', protect, createJob);
 
-// ------------------------------------------------------------------
-// 2. GET  /api/jobs   → get all posted jobs (public)
-// ------------------------------------------------------------------
+// Get all jobs (public)
 router.get('/', getJobs);
 
-// ------------------------------------------------------------------
-// 3. POST /api/jobs/:id/interest   → freelancer shows interest
-// ------------------------------------------------------------------
+// Get my jobs (buyer only)
+router.get('/my', protect, getMyJobs);
+
+// Get single job
+router.get('/:id', getJob);
+
+// Show interest in a job (seller only)
 router.post('/:id/interest', protect, showInterest);
 
-// ------------------------------------------------------------------
-// 4. POST /api/jobs/:id/hire   → client hires a freelancer
-// ------------------------------------------------------------------
+// Hire a freelancer (buyer only)
 router.post('/:id/hire', protect, hireFreelancer);
 
-// ------------------------------------------------------------------
-// 5. POST /api/jobs/:id/unhire → client unhires a freelancer
-// ------------------------------------------------------------------
+// Unhire a freelancer (buyer only)
 router.post('/:id/unhire', protect, unhireFreelancer);
+
+// Complete a job (buyer only)
+router.post('/:id/complete', protect, completeJob);
 
 module.exports = router;

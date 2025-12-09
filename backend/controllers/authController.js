@@ -7,50 +7,90 @@ const fs = require('fs');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'kajkam-secret-2025';
 
-// ────── Signup (unchanged) ──────
+// ────── Signup ──────
 const signup = async (req, res) => {
   const { name, email, password, role } = req.body;
   try {
+    // Validation
     if (!name || !email || !password) {
       return res.status(400).json({ message: "All fields required" });
     }
+    
+    if (!role || !['buyer', 'seller'].includes(role)) {
+      return res.status(400).json({ message: "Valid role required (buyer/seller)" });
+    }
+
+    // Check if email exists
     const exists = await User.findOne({ email });
-    if (exists) return res.status(400).json({ message: "Email already used" });
+    if (exists) {
+      return res.status(400).json({ message: "Email already registered" });
+    }
 
+    // Hash password and create user
     const hashed = await bcrypt.hash(password, 12);
-    const user = await User.create({ name, email, password: hashed, role });
+    const user = await User.create({ 
+      name, 
+      email, 
+      password: hashed, 
+      role 
+    });
 
+    // Generate token
     const token = jwt.sign({ id: user._id, role: user.role }, JWT_SECRET, { expiresIn: '7d' });
 
     res.status(201).json({
       success: true,
       token,
-      user: { id: user._id, name: user.name, email: user.email, role: user.role }
+      user: { 
+        id: user._id, 
+        name: user.name, 
+        email: user.email, 
+        role: user.role 
+      }
     });
   } catch (err) {
-    res.status(500).json({ message: "Server error" });
+    console.error('Signup error:', err);
+    res.status(500).json({ message: err.message || "Server error during signup" });
   }
 };
 
-// ────── Login (unchanged) ──────
+// ────── Login ──────
 const login = async (req, res) => {
   const { email, password } = req.body;
   try {
-    const user = await User.findOne({ email });
-    if (!user) return res.status(404).json({ message: "User not found" });
+    // Validation
+    if (!email || !password) {
+      return res.status(400).json({ message: "Email and password required" });
+    }
 
+    // Find user - explicitly select password since it's set to select: false in schema
+    const user = await User.findOne({ email }).select('+password');
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Compare password
     const match = await bcrypt.compare(password, user.password);
-    if (!match) return res.status(400).json({ message: "Wrong password" });
+    if (!match) {
+      return res.status(400).json({ message: "Invalid password" });
+    }
 
+    // Generate token
     const token = jwt.sign({ id: user._id, role: user.role }, JWT_SECRET, { expiresIn: '7d' });
 
     res.json({
       success: true,
       token,
-      user: { id: user._id, name: user.name, email: user.email, role: user.role }
+      user: { 
+        id: user._id, 
+        name: user.name, 
+        email: user.email, 
+        role: user.role 
+      }
     });
   } catch (err) {
-    res.status(500).json({ message: "Server error" });
+    console.error('Login error:', err);
+    res.status(500).json({ message: err.message || "Server error during login" });
   }
 };
 

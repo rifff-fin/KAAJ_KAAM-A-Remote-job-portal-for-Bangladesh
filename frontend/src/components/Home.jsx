@@ -28,7 +28,7 @@ export default function Home() {
               </div>
             ) : (
               <Link
-                to={user.role === 'seller' ? '/seller-dashboard' : '/jobs'}
+                to={user.role === 'seller' ? '/seller-dashboard' : '/client-dashboard'}
                 className="btn-primary mt-8 inline-block hover:opacity-90 hover:scale-105 transition-transform"
               >
                 Go to Dashboard

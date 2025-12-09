@@ -7,32 +7,67 @@ require('dotenv').config();
 const connectDB = require('./config/db');
 const authRoutes = require('./routes/auth');
 const gigRoutes = require('./routes/gig');
-const jobRoutes = require('./routes/job'); // ← Make sure this is imported
+const jobRoutes = require('./routes/job');
 
 const app = express();
+const PORT = process.env.PORT || 8080;
 
-// CORS
+// CORS Configuration
 const allowedOrigins = ['http://localhost:3000', 'http://localhost:5173'];
-app.use(cors({ origin: allowedOrigins, credentials: true }));
+app.use(cors({ 
+  origin: allowedOrigins, 
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'x-auth-token']
+}));
 
+// Middleware
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-// ROUTES
+// Health check
+app.get('/', (req, res) => res.json({ message: 'KAAJ KAAM API Running' }));
+
+// API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/gigs', gigRoutes);
-app.use('/api/jobs', jobRoutes); // ← MUST BE HERE
+app.use('/api/jobs', jobRoutes);
+app.use('/api/chat', require('./routes/chat'));
+app.use('/api/orders', require('./routes/order'));
+app.use('/api/proposals', require('./routes/proposal'));
+app.use('/api/reviews', require('./routes/review'));
+app.use('/api/notifications', require('./routes/notification'));
 
-app.get('/', (req, res) => res.send('KAAJ KAAM API Running'));
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error('Error:', err);
+  res.status(err.status || 500).json({ 
+    message: err.message || 'Internal Server Error' 
+  });
+});
 
 // Socket.IO
 const server = http.createServer(app);
-const io = new Server(server, { cors: { origin: allowedOrigins } });
+const io = new Server(server, { 
+  cors: { 
+    origin: allowedOrigins,
+    credentials: true
+  } 
+});
 app.set('io', io);
 require('./sockets/chatSocket')(io);
 
-// Start
-connectDB().then(() => {
-  server.listen(8080, () => {
-    console.log('Server running on http://localhost:8080');
-  });
-});
+// Start Server
+const startServer = async () => {
+  try {
+    await connectDB();
+    server.listen(PORT, () => {
+      console.log(`✓ Server running on http://localhost:${PORT}`);
+    });
+  } catch (err) {
+    console.error('✗ Failed to start server:', err.message);
+    process.exit(1);
+  }
+};
+
+startServer();

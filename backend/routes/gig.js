@@ -1,25 +1,27 @@
 // backend/routes/gig.js
 const express = require('express');
-const { createGig, getMyGigs, getAllGigs, getGig } = require('../controllers/gigController');
+const { createGig, getMyGigs, getAllGigs, getGig, updateGig, deleteGig } = require('../controllers/gigController');
 const { protect } = require('../middleware/auth');
 const upload = require('../middleware/upload');
-const Gig = require('../models/Gig'); // <-- THIS WAS MISSING
 
 const router = express.Router();
 
+// Create a new gig (protected - sellers only)
 router.post('/', protect, upload.single('image'), createGig);
-router.get('/my', protect, getMyGigs); // Keep for protected
-router.get('/', async (req, res) => {
-  try {
-    const { userId } = req.query;
-    const filter = userId ? { user: userId } : {};
-    const gigs = await Gig.find(filter).populate('user', 'name');
-    res.json(gigs);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Server error' });
-  }
-});
+
+// Get all gigs (public)
+router.get('/', getAllGigs);
+
+// Get my gigs (protected)
+router.get('/my', protect, getMyGigs);
+
+// Get single gig by ID (public)
 router.get('/:id', getGig);
+
+// Update gig (protected - seller only)
+router.put('/:id', protect, upload.single('image'), updateGig);
+
+// Delete gig (protected - seller only)
+router.delete('/:id', protect, deleteGig);
 
 module.exports = router;

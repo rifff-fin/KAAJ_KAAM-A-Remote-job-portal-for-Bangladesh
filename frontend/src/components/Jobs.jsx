@@ -33,7 +33,7 @@ export default function Jobs() {
   }, [search, category]);
 
   // Apply to job
-  const handleApply = async (jobId, clientId) => {
+  const handleApply = async (jobId, client) => {
     if (!user || user.role !== 'seller') {
       alert('Only freelancers can apply');
       return;
@@ -48,10 +48,24 @@ export default function Jobs() {
 
     try {
       await API.post(`/jobs/${jobId}/interest`, { message });
-      alert('Applied successfully! Opening chat...');
-      navigate(`/chat?with=${clientId}`);
+      
+      // Create or get conversation with client
+      const response = await API.post('/chat/conversations', {
+        participantId: client._id
+      });
+      
+      const conversationId = response.data._id;
+
+      // Open message popup
+      if (window.openMessagePopup) {
+        window.openMessagePopup(conversationId, client);
+      } else {
+        navigate(`/chat/${conversationId}`);
+      }
+      
+      alert('Applied successfully!');
     } catch (err) {
-      alert(err.response?.data?.msg || 'Failed to apply');
+      alert(err.response?.data?.message || 'Failed to apply');
     } finally {
       setApplying(null);
     }
@@ -145,7 +159,7 @@ export default function Jobs() {
                 <div className="jobs-actions">
                   {user?.role === 'seller' ? (
                     <button
-                      onClick={() => handleApply(job._id, job.postedBy._id)}
+                      onClick={() => handleApply(job._id, job.postedBy)}
                       disabled={applying === job._id}
                       className={`jobs-apply ${applying === job._id ? 'applying' : ''}`}
                     >
