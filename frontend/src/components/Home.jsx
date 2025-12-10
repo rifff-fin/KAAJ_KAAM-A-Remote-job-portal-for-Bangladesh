@@ -107,14 +107,14 @@ export default function Home() {
           <div>
             <h4 className="font-semibold mb-3">For Clients</h4>
             <ul className="space-y-2 text-sm">
-              <li><Link to="/post-job">Post a Job</Link></li>
-              <li><Link to="/jobs">Browse Freelancers</Link></li>
+              <li><Link to={user ? "/post-job" : "/login"}>Post a Job</Link></li>
+              <li><Link to="/gigs">Browse Freelancers</Link></li>
             </ul>
           </div>
           <div>
             <h4 className="font-semibold mb-3">For Freelancers</h4>
             <ul className="space-y-2 text-sm">
-              <li><Link to="/jobs">Find Jobs</Link></li>
+              <li><Link to={user ? "/jobs" : "/login"}>Find Jobs</Link></li>
               <li><Link to="/create-gig">Create Gig</Link></li>
             </ul>
           </div>

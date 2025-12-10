@@ -7,6 +7,7 @@ import SellerDashboard from './components/SellerDashboard';
 import CreateGig from './components/CreateGig';
 import PostJob from './components/PostJob';
 import Jobs from './components/Jobs';
+import Gigs from './components/Gigs';
 import GigDetails from './components/GigDetails';
 import OrdersPage from './components/OrdersPage';
 import ChatWindow from './components/ChatWindow';
@@ -31,6 +32,7 @@ function App() {
         <Route path="/create-gig" element={<CreateGig />} />
         <Route path="/post-job" element={<PostJob />} />
         <Route path="/jobs" element={<Jobs />} />
+        <Route path="/gigs" element={<Gigs />} />
         <Route path="/gig/:id" element={<GigDetails />} />
         <Route path="/orders" element={<OrdersPage />} />
         <Route path="/messages" element={<MessagesList />} />

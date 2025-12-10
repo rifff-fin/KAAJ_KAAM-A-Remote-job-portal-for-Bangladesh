@@ -122,6 +122,10 @@ export default function Navbar() {
             <Link to="/" className="text-gray-700 hover:text-blue-600 font-medium transition">
               Home
             </Link>
+            
+            <Link to="/gigs" className="text-gray-700 hover:text-blue-600 font-medium transition">
+              Gigs
+            </Link>
 
             {user?.role === 'seller' && (
               <>
@@ -366,6 +370,14 @@ export default function Navbar() {
               onClick={() => setMobileOpen(false)}
             >
               Home
+            </Link>
+            
+            <Link
+              to="/gigs"
+              className="block px-3 py-2 text-gray-700 hover:bg-gray-50 rounded-lg transition"
+              onClick={() => setMobileOpen(false)}
+            >
+              Gigs
             </Link>
 
             {user?.role === 'seller' && (
