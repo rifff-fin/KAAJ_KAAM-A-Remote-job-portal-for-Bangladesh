@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "auxly": {
+      "command": "node",
+      "args": [
+        "c:\\Users\\rifat\\.vscode\\extensions\\tzamun-arabia.auxly-extension-0.1.8\\dist\\mcp-server\\index.js"
+      ],
+      "env": {
+        "AUXLY_WORKSPACE_PATH": "d:\\KAAJ_KAAM-A Remote_job_portal_for_Bangladesh",
+        "AUXLY_API_URL": "https://auxly.tzamun.com"
+      }
+    }
+  }
+}

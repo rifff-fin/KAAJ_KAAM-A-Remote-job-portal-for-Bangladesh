@@ -119,28 +119,46 @@ export default function ChatWindow() {
   const sendMessage = async () => {
     if (!messageText.trim()) return;
 
-    setSending(true);
-    try {
-      const response = await API.post(
-        `/chat/conversations/${conversationId}/messages`,
-        {
-          text: messageText,
-          attachments: []
-        }
-      );
+    // No need to set sending state, as the socket event is fast
+    // setSending(true); 
 
+    try {
       socket.emit('send_message', {
         conversationId,
         text: messageText,
-        attachments: []
+        attachments: [],
+        sender: {
+          _id: user.id,
+          name: user.name,
+          profile: {
+            avatar: user.profile?.avatar
+          }
+        }
       });
+
+      // Optimistically update the UI
+      setMessages(prev => [...prev, {
+        _id: new Date().toISOString(), // Temporary ID
+        conversationId,
+        sender: {
+          _id: user.id,
+          name: user.name,
+          profile: {
+            avatar: user.profile?.avatar
+          }
+        },
+        text: messageText,
+        attachments: [],
+        createdAt: new Date().toISOString()
+      }]);
 
       setMessageText('');
     } catch (err) {
       console.error('Error sending message:', err);
       alert('Failed to send message');
+      // Optionally, remove the optimistically added message
     } finally {
-      setSending(false);
+      // setSending(false);
     }
   };
 

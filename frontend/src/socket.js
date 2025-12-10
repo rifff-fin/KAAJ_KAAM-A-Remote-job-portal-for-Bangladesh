@@ -1,12 +1,15 @@
 import { io } from 'socket.io-client';
 
 const SOCKET_URL = process.env.NODE_ENV === 'production'
-  ? 'https://kaajkaam.onrender.com'  // Your Render URL
+  ? 'https://kaajkaam.onrender.com'  //abar render e add korte hbe
   : 'http://localhost:8080';
 
 export const socket = io(SOCKET_URL, {
   autoConnect: false,
-  withCredentials: true
+  withCredentials: true,
+  query: {
+    userId: JSON.parse(localStorage.getItem('user') || '{}').id
+  }
 });
 
 socket.on('connect', () => {
