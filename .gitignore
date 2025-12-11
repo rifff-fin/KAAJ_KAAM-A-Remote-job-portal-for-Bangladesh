@@ -1,2 +1,32 @@
-# Auxly - AI Task Management (internal data)
+
+# env files
+.env
+*.env
+
+# markdown files
+*.md
+
+# dependencies
+node_modules/
+
+# build folders
+dist/
+build/
+
+# logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+logs/
+
+# system files
+.DS_Store
+Thumbs.db
+
+# editor
+.vscode/
+.idea/
 .auxly/
+*.md
+.auxlyrc
