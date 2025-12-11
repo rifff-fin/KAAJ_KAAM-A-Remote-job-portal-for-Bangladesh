@@ -2,6 +2,7 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { Briefcase, Shield, MessageSquare } from "lucide-react";
 import { motion } from "framer-motion";
+import hero from "../assets/hero-illustration.png";
 
 export default function Home() {
   const user = JSON.parse(localStorage.getItem("user") || "null");
@@ -68,11 +69,15 @@ export default function Home() {
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 1 }}
           >
-            <img
-              src="/hero-illustration.svg"
-              alt="Freelancing"
-              className="w-full drop-shadow-xl hover:scale-105 transition-transform duration-700"
-            />
+          
+<img
+  src={hero}
+  alt="Freelancing"
+ className="w-full  mt-[100px] rounded-2xl drop-shadow-xl hover:scale-105 transition-transform duration-700"
+
+/>
+
+
           </motion.div>
         </div>
       </section>
