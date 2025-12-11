@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Bell, User, LogOut, Settings, Briefcase, Menu, X, MessageSquare } from 'lucide-react';
 import { socket } from '../socket';
 import API from '../api';
+import { AUTH_CHANGE_EVENT, getUser, clearAuthData } from '../utils/auth';
 
 export default function Navbar() {
   const navigate = useNavigate();
@@ -18,10 +19,21 @@ export default function Navbar() {
   const notifRef = useRef(null);
   const messagesRef = useRef(null);
 
-  // Load user
+  // Load user and listen for auth changes
   useEffect(() => {
-    const stored = JSON.parse(localStorage.getItem('user') || 'null');
-    setUser(stored);
+    const loadUser = () => {
+      const stored = getUser();
+      setUser(stored);
+    };
+    
+    loadUser();
+    
+    // Listen for auth state changes
+    window.addEventListener(AUTH_CHANGE_EVENT, loadUser);
+    
+    return () => {
+      window.removeEventListener(AUTH_CHANGE_EVENT, loadUser);
+    };
   }, []);
 
   // Live BD Time
@@ -98,8 +110,7 @@ export default function Navbar() {
   }, []);
 
   const logout = () => {
-    localStorage.removeItem('user');
-    localStorage.removeItem('token');
+    clearAuthData();
     setUser(null);
     navigate('/login');
   };

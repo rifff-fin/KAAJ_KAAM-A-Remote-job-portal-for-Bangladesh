@@ -1,9 +1,22 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Briefcase, Shield, MessageSquare } from 'lucide-react';
+import { AUTH_CHANGE_EVENT, getUser } from '../utils/auth';
 
 export default function Home() {
-  const user = JSON.parse(localStorage.getItem('user') || 'null');
+  const [user, setUser] = useState(getUser());
+
+  useEffect(() => {
+    const handleAuthChange = () => {
+      setUser(getUser());
+    };
+
+    window.addEventListener(AUTH_CHANGE_EVENT, handleAuthChange);
+    
+    return () => {
+      window.removeEventListener(AUTH_CHANGE_EVENT, handleAuthChange);
+    };
+  }, []);
 
   return (
     <>
