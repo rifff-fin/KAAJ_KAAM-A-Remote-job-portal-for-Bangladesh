@@ -32,7 +32,7 @@ export default function GigDetails() {
       const response = await API.post('/chat/conversations', {
         participantId: gig.seller._id
       });
-      
+
       const conversationId = response.data._id;
       const otherUser = gig.seller;
 
@@ -60,17 +60,17 @@ export default function GigDetails() {
             {/* Image Section */}
             <div>
               {gig.thumbnail || gig.images?.[0] ? (
-                <img 
-                  src={gig.thumbnail || gig.images[0]} 
-                  alt={gig.title} 
-                  className="w-full h-96 object-cover rounded-xl shadow-lg" 
+                <img
+                  src={gig.thumbnail || gig.images[0]}
+                  alt={gig.title}
+                  className="w-full h-96 object-cover rounded-xl shadow-lg"
                 />
               ) : (
                 <div className="bg-gradient-to-br from-blue-500 to-purple-500 h-96 rounded-xl flex items-center justify-center shadow-lg">
                   <span className="text-white text-xl font-semibold">No Image</span>
                 </div>
               )}
-              
+
               {/* Stats */}
               <div className="grid grid-cols-3 gap-4 mt-6">
                 <div className="bg-gray-50 rounded-lg p-4 text-center">
@@ -96,18 +96,18 @@ export default function GigDetails() {
               <div>
                 <h1 className="text-4xl font-bold text-gray-900 mb-4">{gig.title}</h1>
                 <p className="text-gray-700 mb-6 leading-relaxed">{gig.description}</p>
-                
+
                 <div className="space-y-4 mb-6">
                   <div className="flex items-center justify-between p-4 bg-green-50 rounded-lg">
                     <span className="text-gray-700 font-medium">Price</span>
                     <span className="text-3xl font-bold text-green-600">৳{gig.basePrice}</span>
                   </div>
-                  
+
                   <div className="flex items-center gap-2 p-4 bg-blue-50 rounded-lg">
                     <Clock className="w-5 h-5 text-blue-600" />
                     <span className="text-gray-700">Delivery: <strong>{gig.deliveryDays} days</strong></span>
                   </div>
-                  
+
                   <div className="p-4 bg-purple-50 rounded-lg">
                     <p className="text-gray-700">Category: <strong className="text-purple-700">{gig.category}</strong></p>
                   </div>
@@ -137,21 +137,29 @@ export default function GigDetails() {
               {/* Action Buttons */}
               <div className="mt-8 space-y-3">
                 {user?.role === 'buyer' && gig.seller?._id !== user.id && (
-                  <button
-                    onClick={handleContactSeller}
-                    className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white py-4 rounded-xl font-bold hover:shadow-lg transition-all transform hover:scale-105"
-                  >
-                    <MessageSquare className="w-5 h-5" />
-                    Contact Seller
-                  </button>
+                  <>
+                    <button
+                      onClick={() => alert('Order placement coming soon!')}
+                      className="w-full bg-gradient-to-r from-green-600 to-emerald-600 text-white py-4 rounded-xl font-bold hover:shadow-lg transition-all transform hover:scale-105"
+                    >
+                      Place Your Order
+                    </button>
+                    <button
+                      onClick={handleContactSeller}
+                      className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white py-4 rounded-xl font-bold hover:shadow-lg transition-all transform hover:scale-105"
+                    >
+                      <MessageSquare className="w-5 h-5" />
+                      Contact Seller
+                    </button>
+                  </>
                 )}
-                
+
                 {!user && (
                   <button
                     onClick={() => navigate('/login')}
                     className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-4 rounded-xl font-bold hover:shadow-lg transition-all transform hover:scale-105"
                   >
-                    Login to Contact Seller
+                    Login to Place Order
                   </button>
                 )}
 

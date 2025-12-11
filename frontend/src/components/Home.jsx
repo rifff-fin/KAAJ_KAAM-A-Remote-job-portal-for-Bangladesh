@@ -12,7 +12,7 @@ export default function Home() {
     };
 
     window.addEventListener(AUTH_CHANGE_EVENT, handleAuthChange);
-    
+
     return () => {
       window.removeEventListener(AUTH_CHANGE_EVENT, handleAuthChange);
     };
@@ -67,28 +67,61 @@ export default function Home() {
             Why Choose <span className="text-blue-600">KAAJ KAAM?</span>
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="card group hover:bg-blue-600 hover:text-white transition-all duration-300">
-              <Briefcase className="mx-auto text-blue-600 group-hover:text-white w-12 h-12 mb-4 transition" />
-              <h3 className="text-xl font-semibold mb-2">Verified Freelancers</h3>
-              <p className="text-gray-600 group-hover:text-blue-100 transition">
-                Work with trusted professionals from Bangladesh.
-              </p>
+            {/* Card 1 - Verified Freelancers */}
+            <div className="h-64 card-slide">
+              <div className="card-slide-content">
+                <Briefcase className="mx-auto text-blue-600 w-12 h-12 mb-4" />
+                <h3 className="text-xl font-semibold mb-2">Verified Freelancers</h3>
+                <p className="text-gray-600">
+                  Work with trusted professionals from Bangladesh.
+                </p>
+              </div>
+              <div className="card-slide-overlay">
+                <p className="text-sm leading-relaxed">
+                  ✓ Identity verified<br />
+                  ✓ Skill assessments completed<br />
+                  ✓ Portfolio reviewed<br />
+                  ✓ Proven track records
+                </p>
+              </div>
             </div>
 
-            <div className="card group hover:bg-blue-600 hover:text-white transition-all duration-300">
-              <Shield className="mx-auto text-blue-600 group-hover:text-white w-12 h-12 mb-4 transition" />
-              <h3 className="text-xl font-semibold mb-2">Secure Payments</h3>
-              <p className="text-gray-600 group-hover:text-blue-100 transition">
-                Escrow protection until job completion.
-              </p>
+            {/* Card 2 - Secure Payments */}
+            <div className="h-64 card-slide">
+              <div className="card-slide-content">
+                <Shield className="mx-auto text-blue-600 w-12 h-12 mb-4" />
+                <h3 className="text-xl font-semibold mb-2">Secure Payments</h3>
+                <p className="text-gray-600">
+                  Escrow protection until job completion.
+                </p>
+              </div>
+              <div className="card-slide-overlay">
+                <p className="text-sm leading-relaxed">
+                  💰 Payment held in escrow<br />
+                  🔒 Released after approval<br />
+                  🛡️ Full refund protection<br />
+                  ✅ Secure transactions
+                </p>
+              </div>
             </div>
 
-            <div className="card group hover:bg-blue-600 hover:text-white transition-all duration-300">
-              <MessageSquare className="mx-auto text-blue-600 group-hover:text-white w-12 h-12 mb-4 transition" />
-              <h3 className="text-xl font-semibold mb-2">Real-time Chat</h3>
-              <p className="text-gray-600 group-hover:text-blue-100 transition">
-                Communicate instantly with clients or freelancers.
-              </p>
+            {/* Card 3 - Real-time Chat */}
+            <div className="h-64 card-slide">
+              <div className="card-slide-content">
+                <MessageSquare className="mx-auto text-blue-600 w-12 h-12 mb-4" />
+                <h3 className="text-xl font-semibold mb-2">Real-time Chat</h3>
+                <p className="text-gray-600">
+                  Communicate instantly with clients or freelancers.
+                </p>
+              </div>
+              <div className="card-slide-overlay">
+                <p className="text-sm leading-relaxed">
+                  💬 Instant messaging<br />
+                  📎 File sharing<br />
+                  🔔 Live notifications<br />
+                  👥 Seamless collaboration
+                </p>
+              </div>
             </div>
           </div>
         </div>
@@ -97,7 +130,7 @@ export default function Home() {
       {/* Call to Action */}
       <section className="py-20 bg-blue-600 text-center text-white">
         <h2 className="text-3xl font-bold mb-4">
-          Ready to Start Your Freelance Journey?
+          Ready to Gear Up The Collaboration Game?
         </h2>
         <p className="text-lg text-blue-100 mb-8">
           Whether you’re hiring or offering your skills — join Bangladesh’s fastest-growing remote platform.

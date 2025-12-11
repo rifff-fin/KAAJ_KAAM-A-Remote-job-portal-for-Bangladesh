@@ -8,6 +8,7 @@
 .hero h1 {
   transition: all 0.3s ease;
 }
+
 .hero h1:hover {
   opacity: 0.9;
   transform: scale(1.01);
@@ -16,6 +17,7 @@
 .hero img {
   transition: transform 0.6s ease, opacity 0.3s ease;
 }
+
 .hero img:hover {
   transform: scale(1.05);
   opacity: 0.95;
@@ -30,9 +32,66 @@
   transition: all 0.3s ease;
   box-shadow: 0 2px 8px rgba(17, 24, 39, 0.05);
 }
+
 .card:hover {
   transform: translateY(-6px);
   box-shadow: 0 6px 18px rgba(37, 99, 235, 0.2);
+}
+
+/* Slide-Up Overlay Cards - For Home feature cards */
+.card-slide {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  border-radius: 1rem;
+  box-shadow: 0 2px 8px rgba(17, 24, 39, 0.05);
+  transition: all 0.3s ease;
+  height: 100%;
+}
+
+.card-slide:hover {
+  box-shadow: 0 6px 18px rgba(37, 99, 235, 0.2);
+}
+
+.card-slide-content {
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  transition: opacity 0.3s ease;
+}
+
+.card-slide:hover .card-slide-content {
+  opacity: 0.3;
+}
+
+.card-slide-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+  color: white;
+  padding: 1.5rem;
+  transform: translateY(100%);
+  transition: transform 0.4s ease;
+}
+
+.card-slide:hover .card-slide-overlay {
+  transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card-slide-overlay {
+    transition: none;
+  }
+
+  .card-slide-content {
+    transition: none;
+  }
 }
 
 /* Footer */
@@ -41,10 +100,12 @@
   color: #e2e8f0;
   padding: 3rem 0 1.5rem;
 }
+
 .footer a {
   color: #94a3b8;
   transition: color 0.2s ease, opacity 0.2s;
 }
+
 .footer a:hover {
   color: #e2e8f0;
   opacity: 0.9;
@@ -55,6 +116,7 @@
   .hero h1 {
     font-size: 2.4rem;
   }
+
   .hero p {
     font-size: 1.1rem;
   }

@@ -48,12 +48,12 @@ export default function Jobs() {
 
     try {
       await API.post(`/jobs/${jobId}/interest`, { message });
-      
+
       // Create or get conversation with client
       const response = await API.post('/chat/conversations', {
         participantId: client._id
       });
-      
+
       const conversationId = response.data._id;
 
       // Open message popup
@@ -62,7 +62,7 @@ export default function Jobs() {
       } else {
         navigate(`/chat/${conversationId}`);
       }
-      
+
       alert('Applied successfully!');
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to apply');
@@ -103,6 +103,7 @@ export default function Jobs() {
               <option value="video">Video Editing</option>
               <option value="marketing">Digital Marketing</option>
               <option value="mobile">Mobile App</option>
+              <option value="data">Data Entry</option>
               <option value="other">Other</option>
             </select>
           </div>
