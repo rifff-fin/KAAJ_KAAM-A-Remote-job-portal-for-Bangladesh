@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import React from "react";
 import { Link } from "react-router-dom";
 import { Briefcase, Shield, MessageSquare } from "lucide-react";
@@ -6,6 +7,27 @@ import hero from "../assets/hero-illustration.png";
 
 export default function Home() {
   const user = JSON.parse(localStorage.getItem("user") || "null");
+=======
+import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import { Briefcase, Shield, MessageSquare } from 'lucide-react';
+import { AUTH_CHANGE_EVENT, getUser } from '../utils/auth';
+
+export default function Home() {
+  const [user, setUser] = useState(getUser());
+
+  useEffect(() => {
+    const handleAuthChange = () => {
+      setUser(getUser());
+    };
+
+    window.addEventListener(AUTH_CHANGE_EVENT, handleAuthChange);
+    
+    return () => {
+      window.removeEventListener(AUTH_CHANGE_EVENT, handleAuthChange);
+    };
+  }, []);
+>>>>>>> 2c76a72db13f0c51ad519d09b1f6f29efeaa7f75
 
   return (
     <>
@@ -158,16 +180,27 @@ export default function Home() {
 
           <div>
             <h4 className="font-semibold mb-3">For Clients</h4>
+<<<<<<< HEAD
             <ul className="space-y-2 text-sm text-gray-600">
               <li><Link to="/post-job">Post a Job</Link></li>
               <li><Link to="/jobs">Browse Freelancers</Link></li>
+=======
+            <ul className="space-y-2 text-sm">
+              <li><Link to={user ? "/post-job" : "/login"}>Post a Job</Link></li>
+              <li><Link to="/gigs">Browse Freelancers</Link></li>
+>>>>>>> 2c76a72db13f0c51ad519d09b1f6f29efeaa7f75
             </ul>
           </div>
 
           <div>
             <h4 className="font-semibold mb-3">For Freelancers</h4>
+<<<<<<< HEAD
             <ul className="space-y-2 text-sm text-gray-600">
               <li><Link to="/jobs">Find Jobs</Link></li>
+=======
+            <ul className="space-y-2 text-sm">
+              <li><Link to={user ? "/jobs" : "/login"}>Find Jobs</Link></li>
+>>>>>>> 2c76a72db13f0c51ad519d09b1f6f29efeaa7f75
               <li><Link to="/create-gig">Create Gig</Link></li>
             </ul>
           </div>

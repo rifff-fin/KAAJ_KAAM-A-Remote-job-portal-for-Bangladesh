@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import API from '../api';
+import { setAuthData } from '../utils/auth';
 
 export default function Login() {
   const [form, setForm] = useState({ email: '', password: '' });
@@ -35,8 +36,7 @@ export default function Login() {
       });
 
       // Save token and user
-      localStorage.setItem('token', res.data.token);
-      localStorage.setItem('user', JSON.stringify(res.data.user));
+      setAuthData(res.data.token, res.data.user);
 
       alert(`Welcome back, ${res.data.user.name}!`);
       navigate('/'); // redirect to dashboard/home

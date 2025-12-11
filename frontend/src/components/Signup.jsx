@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import API from '../api';
+import { setAuthData } from '../utils/auth';
 
 export default function Signup() {
   const [form, setForm] = useState({
@@ -43,8 +44,7 @@ export default function Signup() {
       const { confirmPassword, ...data } = form;
       const res = await API.post("/auth/signup", data);
 
-      localStorage.setItem("token", res.data.token);
-      localStorage.setItem("user", JSON.stringify(res.data.user));
+      setAuthData(res.data.token, res.data.user);
 
       alert(`Welcome, ${res.data.user.name}!`);
       navigate("/");
