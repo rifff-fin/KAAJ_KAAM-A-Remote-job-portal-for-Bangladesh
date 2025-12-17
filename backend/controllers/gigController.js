@@ -1,15 +1,15 @@
-
 const Gig = require('../models/Gig');
 const cloudinary = require('../config/cloudinary');
 const fs = require('fs');
 
-// Create a new gig
+/* ===============================
+   CREATE A NEW GIG
+================================ */
 exports.createGig = async (req, res) => {
   try {
     const { title, description, category, price, deliveryTime } = req.body;
     const seller = req.user.id;
 
-    // Validation
     if (!title || !description || !category || !price || !deliveryTime) {
       return res.status(400).json({ message: 'All fields are required' });
     }
@@ -21,17 +21,12 @@ exports.createGig = async (req, res) => {
           folder: 'kaaj-kaam/gigs'
         });
         image = result.secure_url;
-        // Clean up local file
-        fs.unlink(req.file.path, (err) => {
-          if (err) console.error('Error deleting temp file:', err);
-        });
-      } catch (uploadErr) {
-        console.error('Cloudinary upload error:', uploadErr);
+        fs.unlink(req.file.path, () => {});
+      } catch (err) {
         return res.status(500).json({ message: 'Image upload failed' });
       }
     }
 
-    // Map frontend fields to backend model fields
     const gig = await Gig.create({
       title,
       description,
@@ -49,12 +44,13 @@ exports.createGig = async (req, res) => {
       gig
     });
   } catch (err) {
-    console.error('Create gig error:', err);
-    res.status(500).json({ message: err.message || 'Failed to create gig' });
+    res.status(500).json({ message: err.message });
   }
 };
 
-// Get all gigs with filters
+/* ===============================
+   GET ALL GIGS (ONLY AVAILABLE SELLERS)
+================================ */
 exports.getAllGigs = async (req, res) => {
   try {
     const { search, category } = req.query;
@@ -66,6 +62,7 @@ exports.getAllGigs = async (req, res) => {
         { description: { $regex: search, $options: 'i' } }
       ];
     }
+
     if (category && category !== 'all') {
       query.category = category;
     }
@@ -74,26 +71,36 @@ exports.getAllGigs = async (req, res) => {
       .populate('seller', 'name email profile')
       .sort({ createdAt: -1 });
 
-    res.json(gigs);
+    // ✅ FILTER UNAVAILABLE SELLERS
+    const filteredGigs = gigs.filter(gig =>
+      gig.seller &&
+      gig.seller.profile &&
+      gig.seller.profile.availability === 'available'
+    );
+
+    res.json(filteredGigs);
   } catch (err) {
-    console.error('Get all gigs error:', err);
     res.status(500).json({ message: err.message });
   }
 };
 
-// Get my gigs (seller only)
+/* ===============================
+   GET MY GIGS (SELLER)
+================================ */
 exports.getMyGigs = async (req, res) => {
   try {
     const gigs = await Gig.find({ seller: req.user.id })
       .sort({ createdAt: -1 });
+
     res.json(gigs);
   } catch (err) {
-    console.error('Get my gigs error:', err);
     res.status(500).json({ message: err.message });
   }
 };
 
-// Get single gig by ID
+/* ===============================
+   GET SINGLE GIG
+================================ */
 exports.getGig = async (req, res) => {
   try {
     const gig = await Gig.findById(req.params.id)
@@ -103,14 +110,23 @@ exports.getGig = async (req, res) => {
       return res.status(404).json({ message: 'Gig not found' });
     }
 
+    // ❌ BLOCK IF SELLER IS UNAVAILABLE
+    if (
+      gig.seller?.profile?.availability &&
+      gig.seller.profile.availability !== 'available'
+    ) {
+      return res.status(404).json({ message: 'Gig not available' });
+    }
+
     res.json(gig);
   } catch (err) {
-    console.error('Get gig error:', err);
     res.status(500).json({ message: err.message });
   }
 };
 
-// Update gig (seller only)
+/* ===============================
+   UPDATE GIG
+================================ */
 exports.updateGig = async (req, res) => {
   try {
     const gig = await Gig.findById(req.params.id);
@@ -120,7 +136,7 @@ exports.updateGig = async (req, res) => {
     }
 
     if (gig.seller.toString() !== req.user.id) {
-      return res.status(403).json({ message: 'Not authorized to update this gig' });
+      return res.status(403).json({ message: 'Not authorized' });
     }
 
     const { title, description, category, price, deliveryTime } = req.body;
@@ -132,19 +148,12 @@ exports.updateGig = async (req, res) => {
     if (deliveryTime) gig.deliveryDays = Number(deliveryTime);
 
     if (req.file) {
-      try {
-        const result = await cloudinary.uploader.upload(req.file.path, {
-          folder: 'kaaj-kaam/gigs'
-        });
-        gig.thumbnail = result.secure_url;
-        gig.images = [result.secure_url];
-        fs.unlink(req.file.path, (err) => {
-          if (err) console.error('Error deleting temp file:', err);
-        });
-      } catch (uploadErr) {
-        console.error('Cloudinary upload error:', uploadErr);
-        return res.status(500).json({ message: 'Image upload failed' });
-      }
+      const result = await cloudinary.uploader.upload(req.file.path, {
+        folder: 'kaaj-kaam/gigs'
+      });
+      gig.thumbnail = result.secure_url;
+      gig.images = [result.secure_url];
+      fs.unlink(req.file.path, () => {});
     }
 
     await gig.save();
@@ -155,12 +164,13 @@ exports.updateGig = async (req, res) => {
       gig
     });
   } catch (err) {
-    console.error('Update gig error:', err);
     res.status(500).json({ message: err.message });
   }
 };
 
-// Delete gig (seller only)
+/* ===============================
+   DELETE GIG
+================================ */
 exports.deleteGig = async (req, res) => {
   try {
     const gig = await Gig.findById(req.params.id);
@@ -170,7 +180,7 @@ exports.deleteGig = async (req, res) => {
     }
 
     if (gig.seller.toString() !== req.user.id) {
-      return res.status(403).json({ message: 'Not authorized to delete this gig' });
+      return res.status(403).json({ message: 'Not authorized' });
     }
 
     await Gig.findByIdAndDelete(req.params.id);
@@ -180,7 +190,6 @@ exports.deleteGig = async (req, res) => {
       message: 'Gig deleted successfully'
     });
   } catch (err) {
-    console.error('Delete gig error:', err);
     res.status(500).json({ message: err.message });
   }
 };
