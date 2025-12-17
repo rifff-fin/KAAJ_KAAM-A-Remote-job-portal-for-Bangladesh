@@ -101,7 +101,7 @@ export default function Home() {
             transition={{ duration: 0.6 }}
           >
             Why Choose <span className="text-blue-600">KAAJ KAAM?</span>
-          </h2>
+          </motion.h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {/* Card 1 - Verified Freelancers */}
             <div className="h-64 card-slide">
