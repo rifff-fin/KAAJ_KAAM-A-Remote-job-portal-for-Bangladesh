@@ -1,8 +1,6 @@
-// src/pages/PostJob.jsx
 import React, { useState, useEffect } from 'react';
 import API from '../api';
 import { useNavigate } from 'react-router-dom';
-import './PostJob.css';
 
 export default function PostJob() {
   const [form, setForm] = useState({
@@ -57,64 +55,73 @@ export default function PostJob() {
   };
 
   return (
-    <div className="postjob-page">
-      <div className="postjob-box">
-        <h1>Post a New Job</h1>
-        <p className="subtitle">Hire top freelancers for your project</p>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-sky-100 flex justify-center py-10 px-4">
+      <div className="bg-white rounded-2xl shadow-xl p-10 w-full max-w-2xl">
+        <h1 className="text-3xl font-bold text-gray-800 text-center mb-1">Post a New Job</h1>
+        <p className="text-center text-gray-500 mb-8">Hire top freelancers for your project</p>
 
-        <form onSubmit={handleSubmit} className="postjob-form">
-          <div className="input-group">
-            <label>Job Title</label>
+        <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+          {/* Job Title */}
+          <div className="flex flex-col">
+            <label className="font-semibold text-gray-700 mb-2">Job Title</label>
             <input
               type="text"
               placeholder="e.g. Build a React Dashboard"
               value={form.title}
               onChange={e => setForm({ ...form, title: e.target.value })}
+              className="border border-gray-300 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-500"
               required
             />
           </div>
 
-          <div className="input-group">
-            <label>Description</label>
+          {/* Description */}
+          <div className="flex flex-col">
+            <label className="font-semibold text-gray-700 mb-2">Description</label>
             <textarea
+              rows={5}
               placeholder="Describe your project in detail..."
               value={form.description}
               onChange={e => setForm({ ...form, description: e.target.value })}
-              rows="5"
+              className="border border-gray-300 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-500 resize-y"
               required
             />
           </div>
 
-          <div className="input-row">
-            <div className="input-group">
-              <label>Budget (BDT)</label>
+          {/* Budget & Deadline */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <div className="flex flex-col">
+              <label className="font-semibold text-gray-700 mb-2">Budget (BDT)</label>
               <input
                 type="number"
                 placeholder="5000"
                 value={form.budget}
                 onChange={e => setForm({ ...form, budget: e.target.value })}
                 min="100"
+                className="border border-gray-300 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-500"
                 required
               />
             </div>
 
-            <div className="input-group">
-              <label>Deadline</label>
+            <div className="flex flex-col">
+              <label className="font-semibold text-gray-700 mb-2">Deadline</label>
               <input
                 type="date"
                 value={form.deadline}
                 onChange={e => setForm({ ...form, deadline: e.target.value })}
                 min={new Date().toISOString().split('T')[0]}
+                className="border border-gray-300 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-500"
                 required
               />
             </div>
           </div>
 
-          <div className="input-group">
-            <label>Category</label>
+          {/* Category */}
+          <div className="flex flex-col">
+            <label className="font-semibold text-gray-700 mb-2">Category</label>
             <select
               value={form.category}
               onChange={e => setForm({ ...form, category: e.target.value })}
+              className="border border-gray-300 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-500"
             >
               <option value="web">Web Development</option>
               <option value="design">Graphic Design</option>
@@ -126,18 +133,27 @@ export default function PostJob() {
             </select>
           </div>
 
-          <div className="input-group">
-            <label>Skills Required (comma separated)</label>
+          {/* Skills */}
+          <div className="flex flex-col">
+            <label className="font-semibold text-gray-700 mb-2">Skills Required (comma separated)</label>
             <input
               type="text"
               placeholder="React, Node.js, MongoDB"
               value={form.skills}
               onChange={e => setForm({ ...form, skills: e.target.value })}
+              className="border border-gray-300 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-500"
             />
-            <small>e.g. JavaScript, Figma, SEO</small>
+            <small className="text-gray-500 mt-1">e.g. JavaScript, Figma, SEO</small>
           </div>
 
-          <button type="submit" disabled={loading} className="submit-btn">
+          {/* Submit */}
+          <button
+            type="submit"
+            disabled={loading}
+            className={`mt-4 bg-blue-600 text-white font-semibold p-3 rounded-lg transition-all ${
+              loading ? 'bg-blue-300 cursor-not-allowed' : 'hover:bg-blue-700'
+            }`}
+          >
             {loading ? 'Posting Job...' : 'Post Job'}
           </button>
         </form>

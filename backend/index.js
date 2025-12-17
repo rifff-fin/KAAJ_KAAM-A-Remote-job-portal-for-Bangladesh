@@ -1,4 +1,3 @@
-// backend/index.js
 const express = require('express');
 const cors = require('cors');
 const http = require('http');
@@ -12,10 +11,17 @@ const jobRoutes = require('./routes/job');
 const app = express();
 const PORT = process.env.PORT || 8080;
 
-// CORS Configuration
+// CORS Configuration (fixed to allow multiple origins)
 const allowedOrigins = ['http://localhost:3000', 'http://localhost:5173'];
-app.use(cors({ 
-  origin: allowedOrigins, 
+
+app.use(cors({
+  origin: function(origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
   allowedHeaders: ['Content-Type', 'x-auth-token']
@@ -32,6 +38,7 @@ app.get('/', (req, res) => res.json({ message: 'KAAJ KAAM API Running' }));
 app.use('/api/auth', authRoutes);
 app.use('/api/gigs', gigRoutes);
 app.use('/api/jobs', jobRoutes);
+app.use('/api/profile', require('./routes/profile'));
 app.use('/api/chat', require('./routes/chat'));
 app.use('/api/orders', require('./routes/order'));
 app.use('/api/proposals', require('./routes/proposal'));

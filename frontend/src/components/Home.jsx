@@ -1,7 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { Briefcase, Shield, MessageSquare } from 'lucide-react';
-import { AUTH_CHANGE_EVENT, getUser } from '../utils/auth';
+import React, { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
+import { Briefcase, Shield, MessageSquare } from "lucide-react";
+import { motion } from "framer-motion";
+import hero from "../assets/hero-illustration.png";
+import { AUTH_CHANGE_EVENT, getUser } from "../utils/auth";
 
 export default function Home() {
   const [user, setUser] = useState(getUser());
@@ -20,50 +22,84 @@ export default function Home() {
 
   return (
     <>
-      {/* Hero Section */}
-      <section className="hero relative overflow-hidden">
-        <div className="container mx-auto grid grid-cols-1 md:grid-cols-2 gap-12 items-center py-20">
-          <div className="z-10">
-            <h1 className="text-5xl md:text-6xl font-extrabold leading-tight text-slate-900 mb-6">
-              Hire Top Freelancers <br /> or Find Remote Jobs in Bangladesh
+      {/* HERO SECTION */}
+      <section className="relative overflow-hidden bg-gradient-to-br from-blue-50 via-white to-indigo-50">
+        <div className="absolute top-0 left-0 w-72 h-72 bg-blue-200 rounded-full blur-3xl opacity-30 -z-10 animate-pulse"></div>
+        <div className="absolute bottom-0 right-0 w-80 h-80 bg-indigo-200 rounded-full blur-3xl opacity-20 -z-10 animate-ping"></div>
+
+        <div className="container mx-auto grid grid-cols-1 md:grid-cols-2 gap-16 items-center py-24">
+          <motion.div
+            className="z-10"
+            initial={{ opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
+          >
+            <h1 className="text-5xl md:text-6xl font-extrabold leading-tight text-slate-900 mb-6 drop-shadow-sm">
+              Find Talent.<span className="text-blue-600"> Get Work.</span>
+              <br /> Build Your Career.
             </h1>
-            <p className="text-lg text-gray-600 mb-8">
-              Join thousands of professionals. Post a job, find talent, or start freelancing today.
+
+            <p className="text-lg text-gray-600 mb-10 max-w-md animate-fadeIn">
+              The easiest way to hire skilled freelancers or find remote jobs across Bangladesh.
             </p>
+
             {!user ? (
               <div className="flex flex-wrap gap-4">
-                <Link to="/signup?role=buyer" className="btn-primary hover:opacity-90 hover:scale-105 transition-transform">
-                  Hire Talent
-                </Link>
-                <Link to="/signup?role=seller" className="btn-outline hover:bg-blue-50 hover:text-blue-600 transition">
-                  Start Freelancing
-                </Link>
+                <motion.div whileHover={{ scale: 1.07 }} whileTap={{ scale: 0.95 }}>
+                  <Link
+                    to="/signup?role=buyer"
+                    className="px-6 py-3 rounded-lg font-semibold bg-blue-600 text-white shadow-md hover:bg-blue-700 transition"
+                  >
+                    Hire Talent
+                  </Link>
+                </motion.div>
+
+                <motion.div whileHover={{ scale: 1.07 }} whileTap={{ scale: 0.95 }}>
+                  <Link
+                    to="/signup?role=seller"
+                    className="px-6 py-3 rounded-lg font-semibold border border-blue-600 text-blue-600 hover:bg-blue-50 transition"
+                  >
+                    Start Freelancing
+                  </Link>
+                </motion.div>
               </div>
             ) : (
-              <Link
-                to={user.role === 'seller' ? '/seller-dashboard' : '/client-dashboard'}
-                className="btn-primary mt-8 inline-block hover:opacity-90 hover:scale-105 transition-transform"
-              >
-                Go to Dashboard
-              </Link>
+              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                <Link
+                  to={user.role === "seller" ? "/seller-dashboard" : "/client-dashboard"}
+                  className="px-6 py-3 rounded-lg font-semibold bg-blue-600 text-white shadow-md hover:bg-blue-700 transition inline-block"
+                >
+                  Go to Dashboard
+                </Link>
+              </motion.div>
             )}
-          </div>
-          <div className="hidden md:block">
-            <img
-              src="/hero-illustration.svg"
-              alt="Freelancing"
-              className="w-full drop-shadow-xl hover:scale-105 transition-transform duration-500"
-            />
-          </div>
-        </div>
+          </motion.div>
 
-        <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-r from-blue-50 via-transparent to-yellow-50 opacity-40"></div>
+          <motion.div
+            className="hidden md:block relative"
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 1 }}
+          >
+            <img
+              src={hero}
+              alt="Freelancing"
+              className="w-full mt-[100px] rounded-2xl drop-shadow-xl hover:scale-105 transition-transform duration-700"
+            />
+          </motion.div>
+        </div>
       </section>
 
-      {/* Features Section */}
+      {/* FEATURES */}
       <section className="py-24 bg-gradient-to-b from-white to-blue-50">
         <div className="container mx-auto text-center">
-          <h2 className="text-4xl font-bold text-slate-800 mb-14">
+          <motion.h2
+            className="text-4xl font-bold text-slate-800 mb-16"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+          >
             Why Choose <span className="text-blue-600">KAAJ KAAM?</span>
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -127,29 +163,44 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Call to Action */}
+      {/* CTA */}
       <section className="py-20 bg-blue-600 text-center text-white">
-        <h2 className="text-3xl font-bold mb-4">
-          Ready to Gear Up The Collaboration Game?
-        </h2>
-        <p className="text-lg text-blue-100 mb-8">
-          Whether you’re hiring or offering your skills — join Bangladesh’s fastest-growing remote platform.
-        </p>
-        <Link
-          to="/signup"
-          className="bg-yellow-400 hover:bg-yellow-500 text-slate-900 px-8 py-4 rounded-lg font-semibold transition-all hover:scale-105"
+        <motion.h2
+          className="text-3xl font-bold mb-4"
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          viewport={{ once: true }}
         >
-          Join Now — It’s Free
-        </Link>
+          Gear Up The Collaboration Game Today
+        </motion.h2>
+
+        <motion.p
+          className="text-lg text-blue-100 mb-8 max-w-xl mx-auto"
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7 }}
+        >
+          Whether you want to hire or earn — our platform connects Bangladesh’s top talent.
+        </motion.p>
+
+        <motion.div whileHover={{ scale: 1.06 }} whileTap={{ scale: 0.95 }}>
+          <Link
+            to="/signup"
+            className="bg-yellow-400 hover:bg-yellow-500 text-slate-900 px-8 py-4 rounded-lg font-semibold transition shadow-md"
+          >
+            Join Now — It’s Free
+          </Link>
+        </motion.div>
       </section>
 
-      {/* Footer */}
-      <footer className="footer">
-        <div className="container mx-auto grid grid-cols-1 md:grid-cols-4 gap-8">
+      {/* FOOTER */}
+      <footer className="footer bg-white border-t py-14">
+        <div className="container mx-auto grid grid-cols-1 md:grid-cols-4 gap-10">
           <div>
-            <h3 className="text-xl font-bold mb-4">KAAJ KAAM</h3>
-            <p className="text-sm text-gray-400">Bangladesh's #1 Remote Job Platform</p>
+            <h3 className="text-xl font-bold mb-3">KAAJ KAAM</h3>
+            <p className="text-sm text-gray-500">Bangladesh’s #1 Remote Work Platform</p>
           </div>
+
           <div>
             <h4 className="font-semibold mb-3">For Clients</h4>
             <ul className="space-y-2 text-sm">
@@ -157,6 +208,7 @@ export default function Home() {
               <li><Link to="/gigs">Browse Freelancers</Link></li>
             </ul>
           </div>
+
           <div>
             <h4 className="font-semibold mb-3">For Freelancers</h4>
             <ul className="space-y-2 text-sm">
@@ -164,17 +216,18 @@ export default function Home() {
               <li><Link to="/create-gig">Create Gig</Link></li>
             </ul>
           </div>
+
           <div>
             <h4 className="font-semibold mb-3">Company</h4>
-            <ul className="space-y-2 text-sm">
-              <li><button className="hover:text-white">About</button></li>
-              <li><button className="hover:text-white">Contact</button></li>
+            <ul className="space-y-2 text-sm text-gray-600">
+              <li><button>About</button></li>
+              <li><button>Contact</button></li>
             </ul>
           </div>
         </div>
+
         <div className="text-center mt-10 text-sm text-gray-400">
-          © 2025 KAAJ KAAM. All rights reserved. | Bangladesh Time:{" "}
-          {new Date().toLocaleString("en-US", { timeZone: "Asia/Dhaka" })}
+          © 2025 KAAJ KAAM • All Rights Reserved • BD Time: {new Date().toLocaleString("en-US", { timeZone: "Asia/Dhaka" })}
         </div>
       </footer>
     </>

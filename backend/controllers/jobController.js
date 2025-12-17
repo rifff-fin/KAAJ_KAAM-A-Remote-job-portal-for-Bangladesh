@@ -159,39 +159,48 @@ exports.showInterest = async (req, res) => {
 exports.hireFreelancer = async (req, res) => {
   try {
     const { freelancerId } = req.body;
+    const { id: jobId } = req.params;
+    const userId = req.user.id;
 
-    if (!freelancerId) {
-      return res.status(400).json({ message: 'Freelancer ID is required' });
+    const job = await Job.findById(jobId);
+    if (!job || job.postedBy.toString() !== userId) {
+      return res.status(403).json({ message: 'Unauthorized' });
     }
 
-    const job = await Job.findById(req.params.id);
-
-    if (!job) {
-      return res.status(404).json({ message: 'Job not found' });
+    const Proposal = require('../models/Proposal');
+    const proposal = await Proposal.findOne({ job: jobId, seller: freelancerId });
+    if (!proposal) {
+      return res.status(404).json({ message: 'Proposal not found for this freelancer' });
     }
 
-    if (job.postedBy.toString() !== req.user.id) {
-      return res.status(403).json({ message: 'Only the job poster can hire' });
-    }
+    // Accept the proposal
+    proposal.status = 'accepted';
+    await proposal.save();
 
-    const interest = job.interests.find(
-      i => i.freelancer.toString() === freelancerId
-    );
-
-    if (!interest) {
-      return res.status(400).json({ message: 'This freelancer has not applied' });
-    }
-
-    job.hiredFreelancer = freelancerId;
+    // Update job status
+    job.hiredSeller = freelancerId;
     job.status = 'in-progress';
     await job.save();
 
-    const updatedJob = await job.populate('hiredFreelancer', 'name email profile');
+    // Create an order
+    const Order = require('../models/Order');
+    const order = await Order.create({
+      buyer: userId,
+      seller: freelancerId,
+      job: jobId,
+      title: job.title,
+      description: job.description,
+      price: proposal.proposedPrice,
+      deliveryDays: proposal.deliveryDays,
+      dueDate: new Date(Date.now() + proposal.deliveryDays * 24 * 60 * 60 * 1000),
+      status: 'active'
+    });
 
     res.json({
       success: true,
-      message: 'Freelancer hired successfully',
-      job: updatedJob
+      message: 'Freelancer hired and order created',
+      job,
+      order
     });
   } catch (err) {
     console.error('Hire freelancer error:', err);
@@ -202,23 +211,42 @@ exports.hireFreelancer = async (req, res) => {
 // Unhire a freelancer (buyer only)
 exports.unhireFreelancer = async (req, res) => {
   try {
-    const job = await Job.findById(req.params.id);
+    const { id: jobId } = req.params;
+    const userId = req.user.id;
 
-    if (!job) {
-      return res.status(404).json({ message: 'Job not found' });
+    const job = await Job.findById(jobId);
+    if (!job || job.postedBy.toString() !== userId) {
+      return res.status(403).json({ message: 'Unauthorized' });
     }
 
-    if (job.postedBy.toString() !== req.user.id) {
-      return res.status(403).json({ message: 'Only the job poster can unhire' });
+    const freelancerId = job.hiredSeller;
+    if (!freelancerId) {
+      return res.status(400).json({ message: 'No freelancer is hired for this job' });
     }
 
-    job.hiredFreelancer = null;
+    // Find and cancel the order
+    const Order = require('../models/Order');
+    const order = await Order.findOne({ job: jobId, status: { $ne: 'completed' } });
+    if (order) {
+      order.status = 'cancelled';
+      await order.save();
+    }
+
+    // Re-open the job
+    job.hiredSeller = null;
     job.status = 'open';
     await job.save();
 
+    // Re-open the proposal
+    const Proposal = require('../models/Proposal');
+    await Proposal.findOneAndUpdate(
+      { job: jobId, seller: freelancerId },
+      { status: 'pending' }
+    );
+
     res.json({
       success: true,
-      message: 'Freelancer removed successfully',
+      message: 'Freelancer unhired and job re-opened',
       job
     });
   } catch (err) {

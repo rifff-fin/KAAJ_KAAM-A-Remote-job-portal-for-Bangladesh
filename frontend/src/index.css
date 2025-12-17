@@ -6,104 +6,213 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Custom Animations */
+
+/* Fade Up */
+@keyframes fade-up {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-up {
+  animation: fade-up .6s ease-out forwards;
+}
+
+/* Float */
+@keyframes float {
+  0% {
+    transform: translateY(0px);
+  }
+
+  50% {
+    transform: translateY(-8px);
+  }
+
+  100% {
+    transform: translateY(0px);
+  }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+/* Glow Pulse */
+@keyframes glow {
+  0% {
+    box-shadow: 0 0 0 rgba(59, 130, 246, 0.1);
+  }
+
+  50% {
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.25);
+  }
+
+  100% {
+    box-shadow: 0 0 0 rgba(59, 130, 246, 0.1);
+  }
+}
+
+.animate-glow {
+  animation: glow 2.5s ease-in-out infinite;
+}
+
+/* Slide in right */
 @keyframes slide-in-right {
-  from {
+  0% {
     transform: translateX(100%);
     opacity: 0;
   }
 
-  to {
+  100% {
     transform: translateX(0);
     opacity: 1;
   }
 }
 
 .animate-slide-in-right {
-  animation: slide-in-right 0.3s ease-out;
+  animation: slide-in-right .4s ease-out;
 }
 
-/* Global Reset */
+/* Smooth Fade */
+@keyframes smooth-fade {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-fade {
+  animation: smooth-fade 0.8s ease-in-out;
+}
+
+
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
 }
 
-/* Base Styles */
 html,
 body,
 #root {
   height: 100%;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: 'Inter', sans-serif;
   -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
   background-color: #f9fafb;
   color: #111827;
-  transition: background-color 0.3s ease, color 0.3s ease;
+  transition: background .3s ease, color .3s ease;
 }
 
-/* Container */
 .container {
-  max-width: 1200px;
+  max-width: 1260px;
   margin: 0 auto;
-  padding: 0 1rem;
+  padding: 0 1.2rem;
 }
 
-/* Headings */
+
+
 h1,
 h2,
 h3,
 h4,
 h5,
 h6 {
-  margin-bottom: 1rem;
+  margin-bottom: .8rem;
   font-weight: 700;
   color: #111827;
 }
 
 /* Links */
 a {
-  text-decoration: none;
   color: #2563eb;
-  transition: color 0.2s;
+  text-decoration: none;
+  transition: all .2s ease;
 }
 
 a:hover {
   color: #1d4ed8;
 }
 
-/* Buttons */
+/* ------------------------------------------------------
+   Buttons
+------------------------------------------------------ */
+
 .btn-primary {
-  @apply bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 transition;
+  @apply bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold shadow-md;
+  transition: all .25s ease-in-out;
+}
+
+.btn-primary:hover {
+  @apply bg-blue-700;
+  transform: translateY(-2px) scale(1.03);
 }
 
 .btn-outline {
-  @apply border border-gray-300 text-gray-700 px-6 py-3 rounded-lg font-medium hover:bg-gray-50 transition;
+  @apply border border-blue-500 text-blue-600 px-6 py-3 rounded-lg font-semibold;
+  transition: all .25s ease-in-out;
+}
+
+.btn-outline:hover {
+  background-color: rgba(59, 130, 246, 0.1);
+  transform: translateY(-2px) scale(1.03);
 }
 
 .btn-danger {
-  @apply bg-red-600 text-white px-4 py-2 rounded-md font-medium hover:bg-red-700 transition;
+  @apply bg-red-600 text-white px-4 py-2 rounded-md font-medium;
+  transition: all .2s ease;
 }
 
-/* Input Fields */
+.btn-danger:hover {
+  @apply bg-red-700;
+  transform: scale(1.03);
+}
+
+/* ------------------------------------------------------
+   Inputs
+------------------------------------------------------ */
+
 .input-field {
-  @apply w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition;
+  @apply w-full px-4 py-3 border border-gray-300 rounded-lg;
+  @apply focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent;
+  transition: all .2s;
 }
 
-/* Card */
+/* ------------------------------------------------------
+   Cards
+------------------------------------------------------ */
+
 .card {
-  @apply bg-white border border-gray-200 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow;
+  @apply bg-white border border-gray-200 rounded-2xl p-6 shadow-sm;
+  transition: all .3s ease;
+}
+
+.card:hover {
+  box-shadow: 0px 12px 35px rgba(0, 0, 0, 0.08);
+  transform: translateY(-5px) scale(1.02);
+}
+
+/* Fancy card glow */
+.card-glow:hover {
+  box-shadow: 0px 0px 25px rgba(37, 99, 235, 0.25);
 }
 
 /* Navbar Shadow */
 .navbar-shadow {
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.1);
 }
 
-/* Button Hover Animation */
+/* Smooth transitions everywhere */
 button,
 .btn-primary,
 .btn-outline {
-  transition: all 0.3s ease-in-out;
+  transition: all .3s ease-in-out;
 }
