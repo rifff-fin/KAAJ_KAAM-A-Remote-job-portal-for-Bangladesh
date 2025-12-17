@@ -29,7 +29,21 @@ export default function Profile() {
 
     setUser(stored);
     fetchData(stored);
+    fetchProfileData();
   }, [navigate]);
+
+  const fetchProfileData = async () => {
+    try {
+      const res = await API.get('/profile/me');
+      if (res.data.success && res.data.user) {
+        const updatedUser = res.data.user;
+        setUser(updatedUser);
+        localStorage.setItem('user', JSON.stringify(updatedUser));
+      }
+    } catch (err) {
+      console.error('Error fetching profile:', err);
+    }
+  };
 
   const fetchData = async (stored) => {
     setLoading(true);
@@ -61,23 +75,75 @@ export default function Profile() {
   const handleUpdate = async (e) => {
     e.preventDefault();
     setUploading(true);
-    const data = new FormData();
-    data.append('name', form.name || user.name);
-    data.append('bio', form.bio || user.profile?.bio || '');
-    data.append('skills', form.skills || user.profile?.skills?.join(', ') || '');
-    data.append('location', form.location || user.profile?.location || '');
-    data.append('phone', form.phone || user.profile?.phone || '');
-    data.append('website', form.website || user.profile?.website || '');
-    data.append('hourlyRate', form.hourlyRate || user.profile?.hourlyRate || 0);
-    if (form.avatar) data.append('avatar', form.avatar);
 
     try {
-      const res = await API.put('/auth/profile', data);
-      localStorage.setItem('user', JSON.stringify(res.data));
-      setUser(res.data);
-      setEditMode(false);
-      setForm({});
+      // Handle avatar upload separately if there's a new avatar
+      if (form.avatar) {
+        const avatarData = new FormData();
+        avatarData.append('avatar', form.avatar);
+        
+        try {
+          const avatarRes = await API.put('/profile/avatar', avatarData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+          });
+          if (avatarRes.data.success) {
+            console.log('Avatar updated successfully');
+          }
+        } catch (err) {
+          console.error('Avatar upload error:', err);
+          alert('Failed to upload avatar: ' + (err.response?.data?.message || err.message));
+        }
+      }
+
+      // Prepare profile update data
+      const profileData = {
+        name: form.name || user.name,
+        bio: form.bio !== undefined ? form.bio : user.profile?.bio,
+        location: form.location !== undefined ? form.location : user.profile?.location,
+        phone: form.phone !== undefined ? form.phone : user.profile?.phone,
+        website: form.website !== undefined ? form.website : user.profile?.website
+      };
+
+      // Add role-specific fields
+      if (user.role === 'seller') {
+        if (form.skills !== undefined) {
+          profileData.skills = typeof form.skills === 'string' 
+            ? form.skills.split(',').map(s => s.trim()).filter(s => s)
+            : form.skills;
+        } else if (user.profile?.skills) {
+          profileData.skills = user.profile.skills;
+        }
+        
+        if (form.hourlyRate !== undefined) {
+          profileData.hourlyRate = parseFloat(form.hourlyRate) || 0;
+        } else if (user.profile?.hourlyRate) {
+          profileData.hourlyRate = user.profile.hourlyRate;
+        }
+
+        if (form.availability) {
+          profileData.availability = form.availability;
+        }
+      }
+
+      // Update profile using the appropriate endpoint
+      const endpoint = user.role === 'seller' ? '/profile/seller' : '/profile/buyer';
+      const res = await API.put(endpoint, profileData);
+      
+      if (res.data.success) {
+        // Fetch updated profile data
+        const profileRes = await API.get('/profile/me');
+        if (profileRes.data.success && profileRes.data.user) {
+          const updatedUser = profileRes.data.user;
+          localStorage.setItem('user', JSON.stringify(updatedUser));
+          setUser(updatedUser);
+        }
+        
+        setEditMode(false);
+        setForm({});
+        alert('Profile updated successfully!');
+      }
     } catch (err) {
+      console.error('Update error:', err);
       alert(err.response?.data?.message || 'Update failed');
     } finally {
       setUploading(false);
@@ -244,16 +310,31 @@ export default function Profile() {
               </div>
               
               {user.role === 'seller' && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Hourly Rate (৳)</label>
-                  <input
-                    type="number"
-                    placeholder="500"
-                    defaultValue={user.profile?.hourlyRate || ''}
-                    onChange={e => setForm({ ...form, hourlyRate: e.target.value })}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Hourly Rate (৳)</label>
+                    <input
+                      type="number"
+                      placeholder="500"
+                      defaultValue={user.profile?.hourlyRate || ''}
+                      onChange={e => setForm({ ...form, hourlyRate: e.target.value })}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Availability</label>
+                    <select
+                      defaultValue={user.profile?.availability || 'available'}
+                      onChange={e => setForm({ ...form, availability: e.target.value })}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      <option value="available">Available</option>
+                      <option value="unavailable">Unavailable</option>
+                      <option value="part-time">Part-time</option>
+                    </select>
+                  </div>
+                </>
               )}
               
               <div className="md:col-span-2">

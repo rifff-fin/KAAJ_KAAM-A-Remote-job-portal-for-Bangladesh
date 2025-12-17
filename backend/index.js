@@ -38,6 +38,7 @@ app.get('/', (req, res) => res.json({ message: 'KAAJ KAAM API Running' }));
 app.use('/api/auth', authRoutes);
 app.use('/api/gigs', gigRoutes);
 app.use('/api/jobs', jobRoutes);
+app.use('/api/profile', require('./routes/profile'));
 app.use('/api/chat', require('./routes/chat'));
 app.use('/api/orders', require('./routes/order'));
 app.use('/api/proposals', require('./routes/proposal'));
