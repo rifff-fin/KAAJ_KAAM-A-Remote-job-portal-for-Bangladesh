@@ -27,13 +27,8 @@ export default function Navbar() {
     };
     
     loadUser();
-    
-    // Listen for auth state changes
     window.addEventListener(AUTH_CHANGE_EVENT, loadUser);
-    
-    return () => {
-      window.removeEventListener(AUTH_CHANGE_EVENT, loadUser);
-    };
+    return () => window.removeEventListener(AUTH_CHANGE_EVENT, loadUser);
   }, []);
 
   // Live BD Time
@@ -85,7 +80,6 @@ export default function Navbar() {
     });
 
     const interval = setInterval(fetchUnreadCount, 30000); // Refresh every 30s
-
     return () => {
       socket.off('receive_message');
       clearInterval(interval);
@@ -115,6 +109,13 @@ export default function Navbar() {
     navigate('/login');
   };
 
+  // Helper to get avatar URL
+  const getAvatarUrl = (avatar) => {
+    if (!avatar) return `https://i.pravatar.cc/40?u=${user?.id}`;
+    if (avatar.startsWith('http')) return avatar;
+    return `${API.defaults.baseURL}${avatar}`;
+  };
+
   return (
     <nav className="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -133,7 +134,6 @@ export default function Navbar() {
             <Link to="/" className="text-gray-700 hover:text-blue-600 font-medium transition">
               Home
             </Link>
-            
             <Link to="/gigs" className="text-gray-700 hover:text-blue-600 font-medium transition">
               Gigs
             </Link>
@@ -215,14 +215,11 @@ export default function Navbar() {
                         recentConversations.map(conv => {
                           const otherUser = conv.participants.find(p => p._id !== user.id);
                           const hasUnread = conv.unreadCount?.get(user.id) > 0;
-                          
                           return (
                             <div
                               key={conv._id}
                               onClick={() => {
-                                if (window.openMessagePopup) {
-                                  window.openMessagePopup(conv._id, otherUser);
-                                }
+                                if (window.openMessagePopup) window.openMessagePopup(conv._id, otherUser);
                                 setMessagesOpen(false);
                               }}
                               className={`px-4 py-3 hover:bg-gray-50 cursor-pointer transition ${hasUnread ? 'bg-blue-50' : ''}`}
@@ -230,9 +227,10 @@ export default function Navbar() {
                               <div className="flex items-center gap-3">
                                 <div className="relative">
                                   <img
-                                    src={otherUser?.profile?.avatar || `https://i.pravatar.cc/40?u=${otherUser?.name}`}
+                                    src={getAvatarUrl(otherUser?.profile?.avatar)}
                                     alt={otherUser?.name}
-                                    className="w-10 h-10 rounded-full"
+                                    onError={(e) => e.currentTarget.src = `https://i.pravatar.cc/40?u=${otherUser?._id}`}
+                                    className="w-10 h-10 rounded-full object-cover"
                                   />
                                   {hasUnread && (
                                     <span className="absolute -top-1 -right-1 w-3 h-3 bg-blue-600 rounded-full border-2 border-white"></span>
@@ -285,29 +283,24 @@ export default function Navbar() {
                     onClick={() => setUserMenuOpen(!userMenuOpen)}
                     className="flex items-center gap-2 p-1.5 hover:bg-gray-100 rounded-lg transition"
                   >
-                    {user.profile?.avatar ? (
-                      <img
-                        src={user.profile.avatar}
-                        alt={user.name}
-                        className="w-8 h-8 rounded-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center">
-                        <User className="w-4 h-4 text-white" />
-                      </div>
-                    )}
+                    <img
+                      src={getAvatarUrl(user?.profile?.avatar)}
+                      alt={user?.name}
+                      onError={(e) => e.currentTarget.src = `https://i.pravatar.cc/40?u=${user?.id}`}
+                      className="w-8 h-8 rounded-full object-cover"
+                    />
                     <span className="hidden md:block text-sm font-medium text-gray-700">
-                      {user.name}
+                      {user?.name}
                     </span>
                   </button>
 
                   {userMenuOpen && (
                     <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-gray-200 py-2">
                       <div className="px-4 py-3 border-b border-gray-100">
-                        <p className="font-semibold text-gray-900">{user.name}</p>
-                        <p className="text-sm text-gray-500">{user.email}</p>
+                        <p className="font-semibold text-gray-900">{user?.name}</p>
+                        <p className="text-sm text-gray-500">{user?.email}</p>
                         <span className="inline-block mt-1 px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-medium rounded">
-                          {user.role === 'seller' ? 'Freelancer' : 'Client'}
+                          {user?.role === 'seller' ? 'Freelancer' : 'Client'}
                         </span>
                       </div>
                       
