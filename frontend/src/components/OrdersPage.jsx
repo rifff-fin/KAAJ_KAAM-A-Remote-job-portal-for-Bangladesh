@@ -2,9 +2,13 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import API from '../api';
-import { FiMessageSquare, FiCheckCircle, FiClock, FiX } from 'react-icons/fi';
+import {
+  FiMessageSquare,
+  FiCheckCircle,
+  FiClock,
+  FiX
+} from 'react-icons/fi';
 import { formatDistanceToNow } from 'date-fns';
-import './OrdersPage.css';
 
 export default function OrdersPage() {
   const navigate = useNavigate();
@@ -12,6 +16,7 @@ export default function OrdersPage() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('all');
   const [userRole, setUserRole] = useState('buyer');
+
   const user = JSON.parse(localStorage.getItem('user') || 'null');
 
   useEffect(() => {
@@ -19,22 +24,21 @@ export default function OrdersPage() {
       navigate('/login');
       return;
     }
-
     setUserRole(user.role);
     fetchOrders();
-  }, [user, navigate, activeTab]);
+    // eslint-disable-next-line
+  }, [activeTab]);
 
   const fetchOrders = async () => {
     try {
       setLoading(true);
-      const response = await API.get('/orders', {
+      const res = await API.get('/orders', {
         params: {
           role: userRole,
           status: activeTab === 'all' ? undefined : activeTab
         }
       });
-
-      setOrders(response.data.orders || []);
+      setOrders(res.data.orders || []);
     } catch (err) {
       console.error('Error fetching orders:', err);
     } finally {
@@ -42,80 +46,78 @@ export default function OrdersPage() {
     }
   };
 
-  const handleChat = (orderId) => {
-    navigate(`/chat/${orderId}`);
+  const handleChat = (conversationId) => {
+    navigate(`/chat/${conversationId}`);
   };
 
-  const handleStatusUpdate = async (orderId, newStatus) => {
+  const handleStatusUpdate = async (orderId, status) => {
     try {
-      await API.put(`/orders/${orderId}/status`, { status: newStatus });
+      await API.put(`/orders/${orderId}/status`, { status });
       fetchOrders();
-    } catch (err) {
+    } catch {
       alert('Failed to update order status');
     }
   };
 
-  const getStatusColor = (status) => {
-    const colors = {
-      pending: '#fbbf24',
-      active: '#3b82f6',
-      completed: '#10b981',
-      cancelled: '#ef4444',
-      disputed: '#f97316'
-    };
-    return colors[status] || '#6b7280';
+  const statusStyles = {
+    pending: 'border-yellow-400 text-yellow-600',
+    active: 'border-blue-500 text-blue-600',
+    completed: 'border-green-500 text-green-600',
+    cancelled: 'border-red-500 text-red-600',
+    disputed: 'border-orange-500 text-orange-600'
   };
 
-  const getStatusIcon = (status) => {
-    switch (status) {
-      case 'completed':
-        return <FiCheckCircle />;
-      case 'pending':
-      case 'active':
-        return <FiClock />;
-      case 'cancelled':
-        return <FiX />;
-      default:
-        return null;
-    }
+  const statusIcon = (status) => {
+    if (status === 'completed') return <FiCheckCircle />;
+    if (status === 'pending' || status === 'active') return <FiClock />;
+    if (status === 'cancelled') return <FiX />;
+    return null;
   };
 
   if (loading) {
     return (
-      <div className="orders-page loading">
-        <div className="spinner">Loading orders...</div>
+      <div className="min-h-screen flex items-center justify-center text-gray-500">
+        Loading orders...
       </div>
     );
   }
 
   return (
-    <div className="orders-page">
-      <div className="orders-header">
-        <h1>My Orders</h1>
-        <p className="subtitle">
-          {userRole === 'buyer' ? 'Orders you placed' : 'Orders assigned to you'}
-        </p>
-      </div>
+    <div className="min-h-screen bg-gray-100 p-5">
+      <div className="max-w-6xl mx-auto">
 
-      {/* Tabs */}
-      <div className="orders-tabs">
-        {['all', 'pending', 'active', 'completed', 'cancelled'].map(tab => (
-          <button
-            key={tab}
-            className={`tab ${activeTab === tab ? 'active' : ''}`}
-            onClick={() => setActiveTab(tab)}
-          >
-            {tab.charAt(0).toUpperCase() + tab.slice(1)}
-          </button>
-        ))}
-      </div>
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-800">My Orders</h1>
+          <p className="text-sm text-gray-500">
+            {userRole === 'buyer'
+              ? 'Orders you placed'
+              : 'Orders assigned to you'}
+          </p>
+        </div>
 
-      {/* Orders List */}
-      <div className="orders-container">
+        {/* Tabs */}
+        <div className="flex gap-3 overflow-x-auto border-b pb-3 mb-6">
+          {['all', 'pending', 'active', 'completed', 'cancelled'].map(tab => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`px-4 py-2 text-sm font-medium capitalize border-b-2 transition ${
+                activeTab === tab
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-800'
+              }`}
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
+
+        {/* Orders */}
         {orders.length === 0 ? (
-          <div className="empty-state">
+          <div className="bg-white rounded-xl py-16 flex flex-col items-center text-gray-400 gap-3">
             <FiMessageSquare size={48} />
-            <p>No orders yet</p>
+            <p className="text-lg font-medium">No orders yet</p>
             <small>
               {userRole === 'buyer'
                 ? 'Browse gigs or post a job to get started'
@@ -123,89 +125,90 @@ export default function OrdersPage() {
             </small>
           </div>
         ) : (
-          <div className="orders-list">
+          <div className="space-y-4">
             {orders.map(order => (
-              <div key={order._id} className="order-card">
-                <div className="order-header">
-                  <div className="order-title">
-                    <h3>{order.title}</h3>
-                    <p className="order-id">Order ID: {order._id.slice(-8)}</p>
+              <div
+                key={order._id}
+                className="bg-white rounded-xl p-5 shadow hover:shadow-lg transition"
+              >
+                {/* Header */}
+                <div className="flex flex-col md:flex-row justify-between gap-4 mb-4">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-800">
+                      {order.title}
+                    </h3>
+                    <p className="text-xs text-gray-400">
+                      Order ID: {order._id.slice(-8)}
+                    </p>
                   </div>
+
                   <div
-                    className="order-status"
-                    style={{ borderColor: getStatusColor(order.status) }}
+                    className={`flex items-center gap-2 px-3 py-2 border-2 rounded-lg text-xs font-semibold uppercase ${statusStyles[order.status]}`}
                   >
-                    {getStatusIcon(order.status)}
-                    <span>{order.status.toUpperCase()}</span>
+                    {statusIcon(order.status)}
+                    {order.status}
                   </div>
                 </div>
 
-                <div className="order-details">
-                  <div className="detail-item">
-                    <span className="label">Price</span>
-                    <span className="value">৳{order.price}</span>
-                  </div>
-                  <div className="detail-item">
-                    <span className="label">Delivery</span>
-                    <span className="value">{order.deliveryDays} days</span>
-                  </div>
-                  <div className="detail-item">
-                    <span className="label">Due Date</span>
-                    <span className="value">
-                      {formatDistanceToNow(new Date(order.dueDate), { addSuffix: true })}
-                    </span>
-                  </div>
-                  <div className="detail-item">
-                    <span className="label">
-                      {userRole === 'buyer' ? 'Seller' : 'Buyer'}
-                    </span>
-                    <span className="value">
-                      {userRole === 'buyer'
+                {/* Details */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 border-b pb-4 mb-4">
+                  <Detail label="Price" value={`৳${order.price}`} />
+                  <Detail label="Delivery" value={`${order.deliveryDays} days`} />
+                  <Detail
+                    label="Due"
+                    value={formatDistanceToNow(new Date(order.dueDate), {
+                      addSuffix: true
+                    })}
+                  />
+                  <Detail
+                    label={userRole === 'buyer' ? 'Seller' : 'Buyer'}
+                    value={
+                      userRole === 'buyer'
                         ? order.seller?.name
-                        : order.buyer?.name}
-                    </span>
-                  </div>
+                        : order.buyer?.name
+                    }
+                  />
                 </div>
 
-                <div className="order-actions">
-                  <button
-                    className="btn-chat"
+                {/* Actions */}
+                <div className="flex flex-col md:flex-row gap-3">
+                  <ActionButton
+                    label="Chat"
+                    color="blue"
+                    icon={<FiMessageSquare />}
                     onClick={() => handleChat(order.conversationId)}
-                  >
-                    <FiMessageSquare size={18} />
-                    Chat
-                  </button>
+                  />
 
                   {userRole === 'seller' && order.status === 'active' && (
-                    <button
-                      className="btn-complete"
-                      onClick={() => handleStatusUpdate(order._id, 'completed')}
-                    >
-                      Mark Complete
-                    </button>
+                    <ActionButton
+                      label="Mark Complete"
+                      color="green"
+                      onClick={() =>
+                        handleStatusUpdate(order._id, 'completed')
+                      }
+                    />
                   )}
 
                   {userRole === 'buyer' && order.status === 'completed' && (
-                    <button
-                      className="btn-review"
+                    <ActionButton
+                      label="Leave Review"
+                      color="purple"
                       onClick={() => navigate(`/review/${order._id}`)}
-                    >
-                      Leave Review
-                    </button>
+                    />
                   )}
 
-                  {order.status !== 'completed' && order.status !== 'cancelled' && (
-                    <button
-                      className="btn-cancel"
-                      onClick={() => {
-                        if (window.confirm('Cancel this order?')) {
-                          handleStatusUpdate(order._id, 'cancelled');
-                        }
-                      }}
-                    >
-                      Cancel
-                    </button>
-                  )}
+                  {order.status !== 'completed' &&
+                    order.status !== 'cancelled' && (
+                      <ActionButton
+                        label="Cancel"
+                        color="gray"
+                        onClick={() => {
+                          if (window.confirm('Cancel this order?')) {
+                            handleStatusUpdate(order._id, 'cancelled');
+                          }
+                        }}
+                      />
+                    )}
                 </div>
               </div>
             ))}
@@ -213,5 +216,35 @@ export default function OrdersPage() {
         )}
       </div>
     </div>
+  );
+}
+
+/* ------------------ SMALL COMPONENTS ------------------ */
+
+function Detail({ label, value }) {
+  return (
+    <div>
+      <p className="text-xs uppercase text-gray-400 font-medium">{label}</p>
+      <p className="text-sm font-semibold text-gray-800">{value}</p>
+    </div>
+  );
+}
+
+function ActionButton({ label, onClick, color, icon }) {
+  const styles = {
+    blue: 'bg-blue-500 hover:bg-blue-600 text-white',
+    green: 'bg-green-500 hover:bg-green-600 text-white',
+    purple: 'bg-purple-500 hover:bg-purple-600 text-white',
+    gray: 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+  };
+
+  return (
+    <button
+      onClick={onClick}
+      className={`flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium transition ${styles[color]}`}
+    >
+      {icon}
+      {label}
+    </button>
   );
 }

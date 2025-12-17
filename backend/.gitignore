@@ -4,7 +4,8 @@
 .env.development
 .env.test
 .env.production
-
+.env
+index.js
 # Dependencies
 node_modules/
 package-lock.json

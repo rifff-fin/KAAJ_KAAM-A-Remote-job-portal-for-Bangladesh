@@ -5,23 +5,25 @@ import { socket } from '../socket';
 import API from '../api';
 import { FiSend, FiPaperclip, FiX } from 'react-icons/fi';
 import { formatDistanceToNow } from 'date-fns';
-import './ChatWindow.css';
 
 export default function ChatWindow() {
   const { conversationId } = useParams();
   const navigate = useNavigate();
+
   const [messages, setMessages] = useState([]);
   const [conversation, setConversation] = useState(null);
   const [messageText, setMessageText] = useState('');
   const [loading, setLoading] = useState(true);
-  const [sending, setSending] = useState(false);
+  const [sending] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const [otherUserOnline, setOtherUserOnline] = useState(false);
+
   const messagesEndRef = useRef(null);
   const typingTimeoutRef = useRef(null);
+
   const user = JSON.parse(localStorage.getItem('user') || 'null');
 
-  // Fetch conversation and messages
+  /* Fetch conversation */
   useEffect(() => {
     if (!user) {
       navigate('/login');
@@ -31,18 +33,16 @@ export default function ChatWindow() {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const [convRes, messagesRes] = await Promise.all([
+        const [convRes, msgRes] = await Promise.all([
           API.get(`/chat/conversations/${conversationId}`),
           API.get(`/chat/conversations/${conversationId}/messages?limit=50`)
         ]);
 
         setConversation(convRes.data);
-        setMessages(messagesRes.data.messages);
+        setMessages(msgRes.data.messages);
 
-        // Mark as read
         await API.put(`/chat/conversations/${conversationId}/read`);
-      } catch (err) {
-        console.error('Error fetching data:', err);
+      } catch {
         alert('Failed to load conversation');
       } finally {
         setLoading(false);
@@ -52,195 +52,160 @@ export default function ChatWindow() {
     fetchData();
   }, [conversationId, user, navigate]);
 
-  // Socket.IO setup
+  /* Socket */
   useEffect(() => {
     if (!conversationId || !user) return;
 
     socket.connect();
     socket.emit('join_conversation', conversationId);
 
-    const handleMessage = (data) => {
-      setMessages(prev => [...prev, data]);
-    };
-
-    const handleUserOnline = () => {
-      setOtherUserOnline(true);
-    };
-
-    const handleUserOffline = () => {
-      setOtherUserOnline(false);
-    };
-
-    const handleUserTyping = () => {
-      setIsTyping(true);
-    };
-
-    const handleUserStopTyping = () => {
-      setIsTyping(false);
-    };
-
-    socket.on('receive_message', handleMessage);
-    socket.on('user_online', handleUserOnline);
-    socket.on('user_offline', handleUserOffline);
-    socket.on('user_typing', handleUserTyping);
-    socket.on('user_stop_typing', handleUserStopTyping);
+    socket.on('receive_message', msg =>
+      setMessages(prev => [...prev, msg])
+    );
+    socket.on('user_online', () => setOtherUserOnline(true));
+    socket.on('user_offline', () => setOtherUserOnline(false));
+    socket.on('user_typing', () => setIsTyping(true));
+    socket.on('user_stop_typing', () => setIsTyping(false));
 
     return () => {
       socket.emit('leave_conversation', conversationId);
-      socket.off('receive_message', handleMessage);
-      socket.off('user_online', handleUserOnline);
-      socket.off('user_offline', handleUserOffline);
-      socket.off('user_typing', handleUserTyping);
-      socket.off('user_stop_typing', handleUserStopTyping);
+      socket.removeAllListeners();
     };
   }, [conversationId, user]);
 
-  // Auto-scroll to bottom
+  /* Scroll */
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  }, [messages, isTyping]);
 
-  // Handle typing
+  /* Typing */
   const handleTyping = (e) => {
     setMessageText(e.target.value);
-
     socket.emit('typing', conversationId);
 
-    if (typingTimeoutRef.current) {
-      clearTimeout(typingTimeoutRef.current);
-    }
-
-    typingTimeoutRef.current = setTimeout(() => {
-      socket.emit('stop_typing', conversationId);
-    }, 1000);
+    clearTimeout(typingTimeoutRef.current);
+    typingTimeoutRef.current = setTimeout(
+      () => socket.emit('stop_typing', conversationId),
+      1000
+    );
   };
 
-  // Send message
-  const sendMessage = async () => {
+  /* Send */
+  const sendMessage = () => {
     if (!messageText.trim()) return;
 
-    // No need to set sending state, as the socket event is fast
-    // setSending(true); 
+    socket.emit('send_message', {
+      conversationId,
+      text: messageText,
+      attachments: [],
+      sender: {
+        _id: user.id,
+        name: user.name,
+        profile: { avatar: user.profile?.avatar }
+      }
+    });
 
-    try {
-      socket.emit('send_message', {
-        conversationId,
-        text: messageText,
-        attachments: [],
-        sender: {
-          _id: user.id,
-          name: user.name,
-          profile: {
-            avatar: user.profile?.avatar
-          }
-        }
-      });
+    setMessages(prev => [...prev, {
+      _id: Date.now(),
+      sender: { _id: user.id, name: user.name, profile: { avatar: user.profile?.avatar } },
+      text: messageText,
+      createdAt: new Date()
+    }]);
 
-      // Optimistically update the UI
-      setMessages(prev => [...prev, {
-        _id: new Date().toISOString(), // Temporary ID
-        conversationId,
-        sender: {
-          _id: user.id,
-          name: user.name,
-          profile: {
-            avatar: user.profile?.avatar
-          }
-        },
-        text: messageText,
-        attachments: [],
-        createdAt: new Date().toISOString()
-      }]);
-
-      setMessageText('');
-    } catch (err) {
-      console.error('Error sending message:', err);
-      alert('Failed to send message');
-      // Optionally, remove the optimistically added message
-    } finally {
-      // setSending(false);
-    }
+    setMessageText('');
   };
 
   if (loading) {
     return (
-      <div className="chat-window loading">
-        <div className="spinner">Loading conversation...</div>
+      <div className="flex items-center justify-center h-screen bg-white">
+        <p className="text-gray-500 text-lg">Loading conversation...</p>
       </div>
     );
   }
 
   if (!conversation) {
     return (
-      <div className="chat-window error">
+      <div className="flex items-center justify-center h-screen bg-white">
         <p>Conversation not found</p>
       </div>
     );
   }
 
-  const otherUser = conversation.participants.find(
-    p => p._id !== user.id
-  );
+  const otherUser = conversation.participants.find(p => p._id !== user.id);
 
   return (
-    <div className="chat-window">
+    <div className="flex flex-col h-screen bg-gray-100">
+
       {/* Header */}
-      <div className="chat-header">
-        <div className="header-info">
-          <div className="user-avatar">
+      <div className="flex items-center justify-between px-5 py-4 bg-white border-b shadow-sm">
+        <div className="flex items-center gap-3">
+          <div className="relative w-12 h-12">
             <img
               src={otherUser?.profile?.avatar || `https://ui-avatars.com/api/?name=${otherUser?.name}`}
-              alt={otherUser?.name}
+              className="w-full h-full rounded-full object-cover"
             />
-            <span className={`status-indicator ${otherUserOnline ? 'online' : 'offline'}`}></span>
+            <span className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white
+              ${otherUserOnline ? 'bg-green-500' : 'bg-gray-400'}`} />
           </div>
           <div>
-            <h3>{otherUser?.name}</h3>
-            <p className="status">
+            <h3 className="font-semibold text-gray-800">{otherUser?.name}</h3>
+            <p className="text-xs text-gray-500">
               {otherUserOnline ? 'Online' : 'Offline'}
             </p>
           </div>
         </div>
-        <button className="close-btn" onClick={() => navigate('/messages')}>
-          <FiX size={24} />
+
+        <button
+          onClick={() => navigate('/messages')}
+          className="p-2 rounded hover:bg-gray-100 text-gray-600"
+        >
+          <FiX size={22} />
         </button>
       </div>
 
       {/* Messages */}
-      <div className="messages-container">
-        {messages.length === 0 ? (
-          <div className="empty-state">
-            <p>No messages yet. Start the conversation!</p>
+      <div className="flex-1 overflow-y-auto p-5 space-y-3">
+        {messages.length === 0 && (
+          <div className="flex items-center justify-center h-full text-gray-400">
+            No messages yet. Start the conversation!
           </div>
-        ) : (
-          messages.map((msg, idx) => (
+        )}
+
+        {messages.map((msg, i) => {
+          const mine = msg.sender._id === user.id;
+          return (
             <div
-              key={msg._id || idx}
-              className={`message ${msg.sender._id === user.id ? 'sent' : 'received'}`}
+              key={i}
+              className={`flex ${mine ? 'justify-end' : 'justify-start'} animate-[fadeIn_0.3s_ease-out]`}
             >
-              {msg.sender._id !== user.id && (
+              {!mine && (
                 <img
                   src={msg.sender.profile?.avatar || `https://ui-avatars.com/api/?name=${msg.sender.name}`}
-                  alt={msg.sender.name}
-                  className="message-avatar"
+                  className="w-8 h-8 rounded-full mr-2"
                 />
               )}
-              <div className="message-content">
-                <p className="message-text">{msg.text}</p>
-                <span className="message-time">
+              <div className={`max-w-[60%] ${mine ? 'text-right' : ''}`}>
+                <p className={`px-4 py-2 text-sm rounded-xl
+                  ${mine
+                    ? 'bg-blue-500 text-white rounded-br-sm'
+                    : 'bg-white border rounded-bl-sm'}`}
+                >
+                  {msg.text}
+                </p>
+                <span className="text-xs text-gray-400">
                   {formatDistanceToNow(new Date(msg.createdAt), { addSuffix: true })}
                 </span>
               </div>
             </div>
-          ))
-        )}
+          );
+        })}
 
         {isTyping && (
-          <div className="message received typing-indicator">
-            <div className="typing-dots">
-              <span></span>
-              <span></span>
-              <span></span>
+          <div className="flex items-center gap-2">
+            <div className="px-4 py-2 bg-white border rounded-xl flex gap-1">
+              <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" />
+              <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-150" />
+              <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-300" />
             </div>
           </div>
         )}
@@ -249,26 +214,28 @@ export default function ChatWindow() {
       </div>
 
       {/* Input */}
-      <div className="chat-input-area">
-        <div className="input-wrapper">
+      <div className="bg-white border-t px-5 py-4">
+        <div className="flex items-center gap-2">
           <input
-            type="text"
             value={messageText}
             onChange={handleTyping}
-            onKeyPress={e => e.key === 'Enter' && !e.shiftKey && sendMessage()}
+            onKeyDown={e => e.key === 'Enter' && sendMessage()}
             placeholder="Type a message..."
-            className="message-input"
+            className="flex-1 px-4 py-2 border rounded-full text-sm
+                       focus:outline-none focus:ring-2 focus:ring-blue-500/20"
             disabled={sending}
           />
-          <button className="attach-btn" title="Attach file">
-            <FiPaperclip size={20} />
+          <button className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center">
+            <FiPaperclip />
           </button>
           <button
             onClick={sendMessage}
-            disabled={!messageText.trim() || sending}
-            className="send-btn"
+            disabled={!messageText.trim()}
+            className="w-10 h-10 rounded-full bg-blue-500 text-white
+                       flex items-center justify-center
+                       hover:bg-blue-600 disabled:bg-gray-300"
           >
-            <FiSend size={20} />
+            <FiSend />
           </button>
         </div>
       </div>
