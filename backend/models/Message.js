@@ -14,7 +14,29 @@ const messageSchema = new mongoose.Schema({
   },
   text: {
     type: String,
-    required: true
+    required: function() {
+      return this.messageType !== 'call';
+    }
+  },
+  messageType: {
+    type: String,
+    enum: ['text', 'call'],
+    default: 'text'
+  },
+  callInfo: {
+    callType: {
+      type: String,
+      enum: ['audio', 'video']
+    },
+    duration: Number, // in seconds
+    status: {
+      type: String,
+      enum: ['completed', 'missed', 'declined', 'failed']
+    },
+    initiatedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    }
   },
   attachments: [
     {

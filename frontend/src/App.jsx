@@ -39,6 +39,7 @@ function App() {
         <Route path="/chat/:conversationId" element={<ChatWindow />} />
         <Route path="/client-dashboard" element={<ClientDashboard />} />
         <Route path="/profile" element={<Profile />} />
+        <Route path="/profile/:userId" element={<Profile />} />
       </Routes>
     </Router>
   );

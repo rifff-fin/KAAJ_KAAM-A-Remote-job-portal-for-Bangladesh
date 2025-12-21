@@ -44,7 +44,7 @@ const createProposal = async (req, res) => {
 
     // Create notification for buyer
     const seller = await User.findById(sellerId);
-    await Notification.create({
+    const notification = await Notification.create({
       recipient: job.postedBy._id,
       type: 'new_proposal',
       title: 'New proposal received',
@@ -52,6 +52,11 @@ const createProposal = async (req, res) => {
       relatedId: proposal._id,
       relatedModel: 'Proposal'
     });
+
+    // Emit socket notification
+    if (global.io) {
+      global.io.to(`user_${job.postedBy._id}`).emit('new_notification', notification);
+    }
 
     await proposal.populate('seller', 'name profile.avatar rating');
 
@@ -155,7 +160,7 @@ const acceptProposal = async (req, res) => {
     );
 
     // Create notifications
-    await Notification.create({
+    const notification = await Notification.create({
       recipient: proposal.seller._id,
       type: 'proposal_accepted',
       title: 'Proposal accepted!',
@@ -163,6 +168,11 @@ const acceptProposal = async (req, res) => {
       relatedId: proposal._id,
       relatedModel: 'Proposal'
     });
+
+    // Emit socket notification
+    if (global.io) {
+      global.io.to(`user_${proposal.seller._id}`).emit('new_notification', notification);
+    }
 
     res.json(proposal);
   } catch (err) {
@@ -195,7 +205,7 @@ const rejectProposal = async (req, res) => {
     await proposal.save();
 
     // Create notification
-    await Notification.create({
+    const notification = await Notification.create({
       recipient: proposal.seller._id,
       type: 'proposal_rejected',
       title: 'Proposal rejected',
@@ -203,6 +213,11 @@ const rejectProposal = async (req, res) => {
       relatedId: proposal._id,
       relatedModel: 'Proposal'
     });
+
+    // Emit socket notification
+    if (global.io) {
+      global.io.to(`user_${proposal.seller._id}`).emit('new_notification', notification);
+    }
 
     res.json(proposal);
   } catch (err) {

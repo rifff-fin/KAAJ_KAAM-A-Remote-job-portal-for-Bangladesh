@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { 
   User, Mail, MapPin, Phone, Globe, DollarSign, Star, 
   Award, TrendingUp, Package, CheckCircle, XCircle, Edit2,
-  Camera, Briefcase, Clock, Calendar
+  Camera, Briefcase, Clock, Calendar, MessageSquare
 } from 'lucide-react';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import API from '../api';
@@ -12,7 +12,10 @@ import ReviewCard from './ReviewCard';
 import { formatCurrency, formatDate, formatRating } from '../utils/formatters';
 
 export default function Profile() {
+  const { userId } = useParams(); // Get userId from URL params
   const [user, setUser] = useState(null);
+  const [profileUser, setProfileUser] = useState(null); // The user whose profile is being viewed
+  const [isOwnProfile, setIsOwnProfile] = useState(true);
   const [gigs, setGigs] = useState([]);
   const [jobs, setJobs] = useState([]);
   const [reviews, setReviews] = useState([]);
@@ -28,9 +31,19 @@ export default function Profile() {
     if (!stored) return navigate('/login');
 
     setUser(stored);
-    fetchData(stored);
-    fetchProfileData();
-  }, [navigate]);
+    
+    // Check if viewing own profile or another user's profile
+    const viewingOwnProfile = !userId || userId === stored.id;
+    setIsOwnProfile(viewingOwnProfile);
+    
+    if (viewingOwnProfile) {
+      setProfileUser(stored);
+      fetchData(stored);
+      fetchProfileData();
+    } else {
+      fetchOtherUserProfile(userId);
+    }
+  }, [navigate, userId]);
 
   const fetchProfileData = async () => {
     try {
@@ -38,6 +51,7 @@ export default function Profile() {
       if (res.data.success && res.data.user) {
         const updatedUser = res.data.user;
         setUser(updatedUser);
+        setProfileUser(updatedUser);
         localStorage.setItem('user', JSON.stringify(updatedUser));
       }
     } catch (err) {
@@ -45,17 +59,34 @@ export default function Profile() {
     }
   };
 
-  const fetchData = async (stored) => {
+  const fetchOtherUserProfile = async (otherUserId) => {
+    setLoading(true);
+    try {
+      const res = await API.get(`/profile/${otherUserId}`);
+      if (res.data.success && res.data.user) {
+        setProfileUser(res.data.user);
+        fetchData(res.data.user);
+      }
+    } catch (err) {
+      console.error('Error fetching other user profile:', err);
+      alert('Failed to load profile');
+      navigate('/');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchData = async (targetUser) => {
     setLoading(true);
     try {
       // Fetch gigs or jobs
-      if (stored.role === 'seller') {
-        const gigsRes = await API.get(`/gigs?sellerId=${stored.id}`);
+      if (targetUser.role === 'seller') {
+        const gigsRes = await API.get(`/gigs?sellerId=${targetUser.id || targetUser._id}`);
         setGigs(gigsRes.data.gigs || gigsRes.data);
         
         // Fetch reviews
         try {
-          const reviewsRes = await API.get(`/reviews/user/${stored.id}`);
+          const reviewsRes = await API.get(`/reviews/user/${targetUser.id || targetUser._id}`);
           setReviews(reviewsRes.data.reviews || []);
         } catch (err) {
           console.error('Error fetching reviews:', err);
@@ -63,12 +94,24 @@ export default function Profile() {
       } else {
         const jobsRes = await API.get('/jobs');
         const allJobs = Array.isArray(jobsRes.data) ? jobsRes.data : jobsRes.data.jobs || [];
-        setJobs(allJobs.filter(j => j.postedBy?._id === stored.id || j.postedBy === stored.id));
+        setJobs(allJobs.filter(j => j.postedBy?._id === (targetUser.id || targetUser._id) || j.postedBy === (targetUser.id || targetUser._id)));
       }
     } catch (err) {
       console.error('Error fetching data:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleStartConversation = async () => {
+    try {
+      const res = await API.post('/chat/conversations', {
+        participantId: profileUser._id || profileUser.id
+      });
+      navigate(`/chat/${res.data._id}`);
+    } catch (err) {
+      console.error('Error creating conversation:', err);
+      alert('Failed to start conversation');
     }
   };
 
@@ -188,11 +231,11 @@ export default function Profile() {
                 {/* Avatar */}
                 <div className="relative group">
                   <img
-                    src={user.profile?.avatar || `https://ui-avatars.com/api/?name=${user.name}&background=3b82f6&color=fff&size=128`}
-                    alt={user.name}
+                    src={profileUser?.profile?.avatar || `https://ui-avatars.com/api/?name=${profileUser?.name}&background=3b82f6&color=fff&size=128`}
+                    alt={profileUser?.name}
                     className="w-32 h-32 rounded-2xl object-cover border-4 border-white shadow-xl"
                   />
-                  {editMode && (
+                  {editMode && isOwnProfile && (
                     <label className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded-2xl cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity">
                       <Camera className="w-8 h-8 text-white" />
                       <input
@@ -206,33 +249,33 @@ export default function Profile() {
                 </div>
                 
                 {/* Name and Info */}
-                <div className="mb-4">
-                  <h1 className="text-3xl font-bold text-gray-900 mb-2">{user.name}</h1>
+                <div className="mb-4 flex-1">
+                  <h1 className="text-3xl font-bold text-gray-900 mb-2">{profileUser?.name}</h1>
                   <div className="flex flex-wrap items-center gap-4 text-gray-600">
                     <span className="flex items-center gap-1">
                       <Mail className="w-4 h-4" />
-                      {user.email}
+                      {profileUser?.email}
                     </span>
-                    {user.profile?.location && (
+                    {profileUser?.profile?.location && (
                       <span className="flex items-center gap-1">
                         <MapPin className="w-4 h-4" />
-                        {user.profile.location}
+                        {profileUser.profile.location}
                       </span>
                     )}
                     <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium">
-                      {user.role === 'seller' ? 'Freelancer' : 'Client'}
+                      {profileUser?.role === 'seller' ? 'Freelancer' : 'Client'}
                     </span>
                   </div>
                   
                   {/* Rating */}
-                  {user.role === 'seller' && user.rating?.average > 0 && (
+                  {profileUser?.role === 'seller' && profileUser?.rating?.average > 0 && (
                     <div className="flex items-center gap-2 mt-3">
                       <div className="flex items-center gap-1">
                         {[...Array(5)].map((_, i) => (
                           <Star
                             key={i}
                             className={`w-5 h-5 ${
-                              i < Math.round(user.rating.average)
+                              i < Math.round(profileUser.rating.average)
                                 ? 'fill-yellow-400 text-yellow-400'
                                 : 'text-gray-300'
                             }`}
@@ -240,22 +283,34 @@ export default function Profile() {
                         ))}
                       </div>
                       <span className="font-semibold text-gray-900">
-                        {formatRating(user.rating.average)}
+                        {formatRating(profileUser.rating.average)}
                       </span>
-                      <span className="text-gray-500">({user.rating.count} reviews)</span>
+                      <span className="text-gray-500">({profileUser.rating.count} reviews)</span>
                     </div>
                   )}
                 </div>
               </div>
               
-              {/* Edit Button */}
-              <button
-                onClick={() => setEditMode(!editMode)}
-                className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition shadow-md hover:shadow-lg"
-              >
-                <Edit2 className="w-4 h-4" />
-                {editMode ? 'Cancel' : 'Edit Profile'}
-              </button>
+              {/* Action Buttons */}
+              <div className="flex gap-3">
+                {isOwnProfile ? (
+                  <button
+                    onClick={() => setEditMode(!editMode)}
+                    className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition shadow-md hover:shadow-lg"
+                  >
+                    <Edit2 className="w-4 h-4" />
+                    {editMode ? 'Cancel' : 'Edit Profile'}
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleStartConversation}
+                    className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition shadow-md hover:shadow-lg"
+                  >
+                    <MessageSquare className="w-4 h-4" />
+                    Message
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>

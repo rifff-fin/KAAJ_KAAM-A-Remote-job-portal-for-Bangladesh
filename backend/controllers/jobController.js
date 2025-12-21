@@ -178,7 +178,7 @@ exports.hireFreelancer = async (req, res) => {
     await proposal.save();
 
     // Update job status
-    job.hiredSeller = freelancerId;
+    job.hiredFreelancer = freelancerId;
     job.status = 'in-progress';
     await job.save();
 
@@ -219,7 +219,7 @@ exports.unhireFreelancer = async (req, res) => {
       return res.status(403).json({ message: 'Unauthorized' });
     }
 
-    const freelancerId = job.hiredSeller;
+    const freelancerId = job.hiredFreelancer;
     if (!freelancerId) {
       return res.status(400).json({ message: 'No freelancer is hired for this job' });
     }
@@ -233,7 +233,7 @@ exports.unhireFreelancer = async (req, res) => {
     }
 
     // Re-open the job
-    job.hiredSeller = null;
+    job.hiredFreelancer = null;
     job.status = 'open';
     await job.save();
 

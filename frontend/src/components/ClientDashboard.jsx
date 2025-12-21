@@ -3,12 +3,15 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Plus, Briefcase, Users, CheckCircle, Clock, MessageSquare, UserCheck, UserX, Eye, TrendingUp } from 'lucide-react';
 import API from '../api';
 import StatCard from './StatCard';
+import ApplyJobModal from './ApplyJobModal';
 import { formatCurrency, formatDate } from '../utils/formatters';
 
 export default function ClientDashboard() {
   const [jobs, setJobs] = useState([]);
   const [gigs, setGigs] = useState([]);
   const [stats, setStats] = useState(null);
+  const [selectedJob, setSelectedJob] = useState(null);
+  const [showApplyModal, setShowApplyModal] = useState(false);
   const navigate = useNavigate();
   const user = JSON.parse(localStorage.getItem('user') || 'null');
 
@@ -50,25 +53,55 @@ export default function ClientDashboard() {
   };
 
   const hire = async (jobId, freelancerId) => {
+    if (!confirm('Are you sure you want to hire this freelancer?')) return;
+    
     try {
-      await API.post(`/jobs/${jobId}/hire`, { freelancerId });
+      const response = await API.post(`/jobs/${jobId}/hire`, { freelancerId });
+      alert('Freelancer hired successfully!');
       fetchData();
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to hire');
+      console.error('Hire error:', err);
+      alert(err.response?.data?.message || 'Failed to hire freelancer');
     }
   };
 
   const unhire = async (jobId) => {
+    if (!confirm('Are you sure you want to unhire this freelancer? This will cancel the order.')) return;
+    
     try {
-      await API.post(`/jobs/${jobId}/unhire`);
+      const response = await API.post(`/jobs/${jobId}/unhire`);
+      alert('Freelancer unhired successfully!');
       fetchData();
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to unhire');
+      console.error('Unhire error:', err);
+      alert(err.response?.data?.message || 'Failed to unhire freelancer');
     }
   };
 
-  const openChat = (freelancerId) => {
-    window.location.href = `/chat?with=${freelancerId}`;
+  const openChat = async (freelancerId, otherUser) => {
+    try {
+      // Create or get conversation
+      const response = await API.post('/chat/conversations', {
+        participantId: freelancerId
+      });
+      const conversationId = response.data._id;
+      
+      // Use global message popup if available
+      if (window.openMessagePopup) {
+        window.openMessagePopup(conversationId, otherUser || { _id: freelancerId, name: 'User' });
+      } else {
+        // Navigate to chat
+        navigate(`/chat/${conversationId}`);
+      }
+    } catch (err) {
+      console.error('Error opening chat:', err);
+      alert('Failed to open chat. Please try again.');
+    }
+  };
+
+  const handleApplyJob = (job) => {
+    setSelectedJob(job);
+    setShowApplyModal(true);
   };
 
   return (
@@ -308,30 +341,33 @@ export default function ClientDashboard() {
 
                             <div className="flex items-center gap-2">
                               <button
-                                onClick={() => openChat(interest.freelancer._id)}
+                                onClick={() => openChat(interest.freelancer._id, interest.freelancer)}
                                 className="flex items-center gap-2 px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                                title="Send message"
                               >
                                 <MessageSquare className="w-4 h-4" />
-                                Message
+                                <span className="hidden sm:inline">Message</span>
                               </button>
 
-                              {!job.hiredFreelancer && (
+                              {job.hiredFreelancer?._id !== interest.freelancer._id && (
                                 <button
                                   onClick={() => hire(job._id, interest.freelancer._id)}
                                   className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
+                                  title="Hire this freelancer"
                                 >
                                   <UserCheck className="w-4 h-4" />
-                                  Hire
+                                  <span className="hidden sm:inline">Hire</span>
                                 </button>
                               )}
 
-                              {job.hiredFreelancer === interest.freelancer._id && (
+                              {job.hiredFreelancer?._id === interest.freelancer._id && (
                                 <button
                                   onClick={() => unhire(job._id)}
                                   className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
+                                  title="Unhire this freelancer"
                                 >
                                   <UserX className="w-4 h-4" />
-                                  Unhire
+                                  <span className="hidden sm:inline">Unhire</span>
                                 </button>
                               )}
                             </div>
@@ -345,6 +381,18 @@ export default function ClientDashboard() {
             </div>
           )}
         </div>
+
+        {/* Apply Job Modal */}
+        {showApplyModal && selectedJob && (
+          <ApplyJobModal
+            job={selectedJob}
+            onClose={() => {
+              setShowApplyModal(false);
+              setSelectedJob(null);
+            }}
+            onSuccess={fetchData}
+          />
+        )}
       </div>
     </div>
   );

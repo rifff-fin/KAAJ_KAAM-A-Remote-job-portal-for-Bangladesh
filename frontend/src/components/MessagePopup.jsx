@@ -1,19 +1,23 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { MessageSquare, X, Send, Minimize2, Maximize2 } from 'lucide-react';
+import { MessageSquare, X, Send, Minimize2, Maximize2, Phone, Video } from 'lucide-react';
 import { socket } from '../socket';
 import API from '../api';
 import { formatDistanceToNow } from 'date-fns';
+import VideoCallModal from './VideoCallModal';
 
-export default function MessagePopup({ conversationId, otherUser, onClose, onMinimize, isMinimized }) {
+export default function MessagePopup({ conversationId, otherUser, onClose, onMinimize, isMinimized, incomingCall = null }) {
   const [messages, setMessages] = useState([]);
   const [messageText, setMessageText] = useState('');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const [otherUserOnline, setOtherUserOnline] = useState(false);
+  const [showCallModal, setShowCallModal] = useState(false);
+  const [callType, setCallType] = useState(null);
+  const [callData, setCallData] = useState(null);
   const messagesEndRef = useRef(null);
   const typingTimeoutRef = useRef(null);
-  const user = JSON.parse(localStorage.getItem('user') || 'null');
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
 
   useEffect(() => {
     if (!conversationId) return;
@@ -35,26 +39,39 @@ export default function MessagePopup({ conversationId, otherUser, onClose, onMin
   }, [conversationId]);
 
   useEffect(() => {
-    if (!conversationId || !user) return;
+    if (!conversationId || !user?.id) return;
 
     socket.connect();
     socket.emit('join_conversation', conversationId);
 
     const handleMessage = (data) => {
-      setMessages(prev => [...prev, data]);
-      API.put(`/chat/conversations/${conversationId}/read`).catch(console.error);
+      // Only add message if it's for this conversation
+      if (data.conversationId === conversationId) {
+        setMessages(prev => [...prev, data]);
+        API.put(`/chat/conversations/${conversationId}/read`).catch(console.error);
+      }
     };
 
     const handleUserOnline = () => setOtherUserOnline(true);
     const handleUserOffline = () => setOtherUserOnline(false);
     const handleUserTyping = () => setIsTyping(true);
     const handleUserStopTyping = () => setIsTyping(false);
+    
+    const handleIncomingCall = (data) => {
+      if (data.conversationId === conversationId) {
+        console.log('Incoming call in popup:', data);
+        setCallData(data);
+        setCallType(data.callType);
+        setShowCallModal(true);
+      }
+    };
 
     socket.on('receive_message', handleMessage);
     socket.on('user_online', handleUserOnline);
     socket.on('user_offline', handleUserOffline);
     socket.on('user_typing', handleUserTyping);
     socket.on('user_stop_typing', handleUserStopTyping);
+    socket.on('call:incoming', handleIncomingCall);
 
     return () => {
       socket.emit('leave_conversation', conversationId);
@@ -63,8 +80,19 @@ export default function MessagePopup({ conversationId, otherUser, onClose, onMin
       socket.off('user_offline', handleUserOffline);
       socket.off('user_typing', handleUserTyping);
       socket.off('user_stop_typing', handleUserStopTyping);
+      socket.off('call:incoming', handleIncomingCall);
     };
-  }, [conversationId, user]);
+  }, [conversationId, user?.id]);
+
+  // Handle incoming call from props
+  useEffect(() => {
+    if (incomingCall && incomingCall.conversationId === conversationId) {
+      console.log('Opening call modal from props:', incomingCall);
+      setCallData(incomingCall);
+      setCallType(incomingCall.callType);
+      setShowCallModal(true);
+    }
+  }, [incomingCall, conversationId]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -88,20 +116,16 @@ export default function MessagePopup({ conversationId, otherUser, onClose, onMin
 
     setSending(true);
     try {
-      await API.post(`/chat/conversations/${conversationId}/messages`, {
+      const response = await API.post(`/chat/conversations/${conversationId}/messages`, {
         text: messageText,
         attachments: []
       });
 
-      socket.emit('send_message', {
-        conversationId,
-        text: messageText,
-        attachments: []
-      });
-
+      // Message will be received via socket, no need to emit again
       setMessageText('');
     } catch (err) {
       console.error('Error sending message:', err);
+      alert('Failed to send message. Please try again.');
     } finally {
       setSending(false);
     }
@@ -183,19 +207,19 @@ export default function MessagePopup({ conversationId, otherUser, onClose, onMin
             {messages.map((msg, idx) => (
               <div
                 key={msg._id || idx}
-                className={`flex mb-3 ${msg.sender._id === user.id ? 'justify-end' : 'justify-start'}`}
+                className={`flex mb-3 ${msg.sender?._id === user.id ? 'justify-end' : 'justify-start'}`}
               >
-                {msg.sender._id !== user.id && (
+                {msg.sender?._id !== user.id && (
                   <img
-                    src={msg.sender.profile?.avatar || `https://i.pravatar.cc/32?u=${msg.sender.name}`}
-                    alt={msg.sender.name}
+                    src={msg.sender?.profile?.avatar || `https://i.pravatar.cc/32?u=${msg.sender?.name}`}
+                    alt={msg.sender?.name || 'User'}
                     className="w-8 h-8 rounded-full mr-2 flex-shrink-0"
                   />
                 )}
-                <div className={`max-w-[70%] ${msg.sender._id === user.id ? 'bg-blue-600 text-white' : 'bg-white text-gray-900'} rounded-2xl px-4 py-2 shadow-sm`}>
+                <div className={`max-w-[70%] ${msg.sender?._id === user.id ? 'bg-blue-600 text-white' : 'bg-white text-gray-900'} rounded-2xl px-4 py-2 shadow-sm`}>
                   <p className="text-sm break-words">{msg.text}</p>
-                  <span className={`text-xs mt-1 block ${msg.sender._id === user.id ? 'text-blue-100' : 'text-gray-500'}`}>
-                    {formatDistanceToNow(new Date(msg.createdAt), { addSuffix: true })}
+                  <span className={`text-xs mt-1 block ${msg.sender?._id === user.id ? 'text-blue-100' : 'text-gray-500'}`}>
+                    {msg.createdAt && formatDistanceToNow(new Date(msg.createdAt), { addSuffix: true })}
                   </span>
                 </div>
               </div>
@@ -219,6 +243,28 @@ export default function MessagePopup({ conversationId, otherUser, onClose, onMin
       {/* Input */}
       <div className="p-4 bg-white border-t border-gray-200 rounded-b-xl">
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => {
+              setCallType('audio');
+              setCallData(null);
+              setShowCallModal(true);
+            }}
+            className="p-2 text-gray-600 hover:bg-gray-100 rounded-full transition"
+            title="Voice Call"
+          >
+            <Phone className="w-5 h-5" />
+          </button>
+          <button
+            onClick={() => {
+              setCallType('video');
+              setCallData(null);
+              setShowCallModal(true);
+            }}
+            className="p-2 text-gray-600 hover:bg-gray-100 rounded-full transition"
+            title="Video Call"
+          >
+            <Video className="w-5 h-5" />
+          </button>
           <input
             type="text"
             value={messageText}
@@ -237,6 +283,21 @@ export default function MessagePopup({ conversationId, otherUser, onClose, onMin
           </button>
         </div>
       </div>
+
+      {/* Video/Audio Call Modal */}
+      {showCallModal && (
+        <VideoCallModal
+          conversationId={conversationId}
+          otherUser={otherUser}
+          isIncoming={!!callData}
+          incomingOffer={callData?.offer}
+          onClose={() => {
+            setShowCallModal(false);
+            setCallData(null);
+          }}
+          callType={callType}
+        />
+      )}
     </div>
   );
 }

@@ -61,7 +61,7 @@ const createReview = async (req, res) => {
     });
 
     // Create notification
-    await Notification.create({
+    const notification = await Notification.create({
       recipient: order.seller,
       type: 'review_received',
       title: `New ${rating}-star review`,
@@ -69,6 +69,11 @@ const createReview = async (req, res) => {
       relatedId: review._id,
       relatedModel: 'Review'
     });
+
+    // Emit socket notification
+    if (global.io) {
+      global.io.to(`user_${order.seller}`).emit('new_notification', notification);
+    }
 
     await review.populate('reviewer', 'name profile.avatar');
 

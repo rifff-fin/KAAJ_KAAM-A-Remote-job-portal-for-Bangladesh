@@ -7,10 +7,8 @@ const connectDB = async () => {
       throw new Error('MONGO_CONN environment variable is not set');
     }
     
-    await mongoose.connect(process.env.MONGO_CONN, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    });
+    // Remove deprecated options
+    await mongoose.connect(process.env.MONGO_CONN);
     console.log('✓ MongoDB Connected Successfully');
   } catch (err) {
     console.error('✗ DB Connection Error:', err.message);

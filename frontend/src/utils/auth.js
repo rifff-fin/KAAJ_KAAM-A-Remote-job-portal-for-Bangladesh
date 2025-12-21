@@ -19,7 +19,12 @@ export const clearAuthData = () => {
 };
 
 export const getUser = () => {
-  return JSON.parse(localStorage.getItem('user') || 'null');
+  try {
+    const userStr = localStorage.getItem('user');
+    return userStr ? JSON.parse(userStr) : null;
+  } catch {
+    return null;
+  }
 };
 
 export const getToken = () => {

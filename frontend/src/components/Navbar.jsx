@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Bell, User, LogOut, Settings, Briefcase, Menu, X, MessageSquare } from 'lucide-react';
+import { Bell, User, LogOut, Briefcase, Menu, X, MessageSquare, Phone, Video } from 'lucide-react';
 import { socket } from '../socket';
 import API from '../api';
 import { AUTH_CHANGE_EVENT, getUser, clearAuthData } from '../utils/auth';
@@ -15,6 +15,9 @@ export default function Navbar() {
   const [messagesOpen, setMessagesOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [recentConversations, setRecentConversations] = useState([]);
+  const [incomingCall, setIncomingCall] = useState(null);
+  const [notifications, setNotifications] = useState([]);
+  const [notificationCount, setNotificationCount] = useState(0);
   const userMenuRef = useRef(null);
   const notifRef = useRef(null);
   const messagesRef = useRef(null);
@@ -47,7 +50,7 @@ export default function Navbar() {
     return () => clearInterval(id);
   }, []);
 
-  // Fetch unread messages count
+  // Fetch unread messages count and notifications
   useEffect(() => {
     if (!user) return;
 
@@ -69,19 +72,45 @@ export default function Navbar() {
       }
     };
 
+    const fetchNotifications = async () => {
+      try {
+        const response = await API.get('/notifications?limit=10');
+        setNotifications(response.data.notifications || []);
+        setNotificationCount(response.data.unreadCount || 0);
+      } catch (err) {
+        console.error('Error fetching notifications:', err);
+      }
+    };
+
     fetchUnreadCount();
     fetchRecentConversations();
+    fetchNotifications();
 
-    // Listen for new messages
+    // Listen for new messages and calls
     socket.connect();
     socket.on('receive_message', () => {
       fetchUnreadCount();
       fetchRecentConversations();
     });
 
-    const interval = setInterval(fetchUnreadCount, 30000); // Refresh every 30s
+    socket.on('call:incoming', (data) => {
+      console.log('Incoming call received in Navbar:', data);
+      setIncomingCall(data);
+    });
+
+    socket.on('new_notification', () => {
+      fetchNotifications();
+    });
+
+    const interval = setInterval(() => {
+      fetchUnreadCount();
+      fetchNotifications();
+    }, 30000); // Refresh every 30s
+    
     return () => {
       socket.off('receive_message');
+      socket.off('call:incoming');
+      socket.off('new_notification');
       clearInterval(interval);
     };
   }, [user]);
@@ -110,10 +139,43 @@ export default function Navbar() {
   };
 
   // Helper to get avatar URL
-  const getAvatarUrl = (avatar) => {
-    if (!avatar) return `https://i.pravatar.cc/40?u=${user?.id}`;
-    if (avatar.startsWith('http')) return avatar;
-    return `${API.defaults.baseURL}${avatar}`;
+  const getAvatarUrl = (avatar, name) => {
+    if (avatar) {
+      if (avatar.startsWith('http')) return avatar;
+      return `${API.defaults.baseURL}${avatar}`;
+    }
+    return `https://ui-avatars.com/api/?name=${encodeURIComponent(name || user?.name || 'User')}&background=3B82F6&color=fff&bold=true`;
+  };
+
+  const handleAcceptCall = async (call) => {
+    setIncomingCall(null);
+    
+    try {
+      // Fetch conversation details to get other user info
+      const response = await API.get(`/chat/conversations/${call.conversationId}`);
+      const otherUser = response.data.participants.find(p => p._id !== user?.id);
+      
+      // Open chat window with call acceptance
+      if (window.openMessagePopup) {
+        window.openMessagePopup(call.conversationId, otherUser, call);
+      } else {
+        // Navigate to chat with call data in state
+        navigate(`/chat/${call.conversationId}`, { state: { incomingCall: call } });
+      }
+    } catch (err) {
+      console.error('Error accepting call:', err);
+      alert('Failed to accept call. Please try again.');
+    }
+  };
+
+  const handleRejectCall = () => {
+    if (incomingCall) {
+      socket.emit('call:reject', { 
+        conversationId: incomingCall.conversationId, 
+        to: incomingCall.from 
+      });
+      setIncomingCall(null);
+    }
   };
 
   return (
@@ -144,7 +206,7 @@ export default function Navbar() {
                   Find Work
                 </Link>
                 <Link to="/seller-dashboard" className="text-gray-700 hover:text-blue-600 font-medium transition">
-                  My Gigs
+                  My Dashboard
                 </Link>
               </>
             )}
@@ -155,7 +217,7 @@ export default function Navbar() {
                   Post Job
                 </Link>
                 <Link to="/client-dashboard" className="text-gray-700 hover:text-blue-600 font-medium transition">
-                  My Jobs
+                  My Dashboard
                 </Link>
               </>
             )}
@@ -214,7 +276,8 @@ export default function Navbar() {
                       ) : (
                         recentConversations.map(conv => {
                           const otherUser = conv.participants.find(p => p._id !== user.id);
-                          const hasUnread = conv.unreadCount?.get(user.id) > 0;
+                          if (!otherUser) return null;
+                          const hasUnread = (conv.unreadCount && conv.unreadCount[user.id]) > 0;
                           return (
                             <div
                               key={conv._id}
@@ -225,9 +288,9 @@ export default function Navbar() {
                               className={`px-4 py-3 hover:bg-gray-50 cursor-pointer transition ${hasUnread ? 'bg-blue-50' : ''}`}
                             >
                               <div className="flex items-center gap-3">
-                                <div className="relative">
+                                <div className="relative flex-shrink-0">
                                   <img
-                                    src={getAvatarUrl(otherUser?.profile?.avatar)}
+                                    src={getAvatarUrl(otherUser?.profile?.avatar, otherUser?.name)}
                                     alt={otherUser?.name}
                                     onError={(e) => e.currentTarget.src = `https://i.pravatar.cc/40?u=${otherUser?._id}`}
                                     className="w-10 h-10 rounded-full object-cover"
@@ -260,19 +323,91 @@ export default function Navbar() {
                     className="relative p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"
                   >
                     <Bell className="w-5 h-5" />
-                    <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+                    {notificationCount > 0 && (
+                      <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                        {notificationCount > 9 ? '9+' : notificationCount}
+                      </span>
+                    )}
                   </button>
 
                   {notificationsOpen && (
-                    <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-lg border border-gray-200 py-2">
-                      <div className="px-4 py-2 border-b border-gray-100">
+                    <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-lg border border-gray-200 py-2 max-h-96 overflow-y-auto">
+                      <div className="px-4 py-2 border-b border-gray-100 flex items-center justify-between">
                         <h3 className="font-semibold text-gray-900">Notifications</h3>
+                        {notificationCount > 0 && (
+                          <button
+                            onClick={async () => {
+                              try {
+                                await API.put('/notifications/read/all');
+                                setNotificationCount(0);
+                                setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+                              } catch (err) {
+                                console.error('Error marking all as read:', err);
+                              }
+                            }}
+                            className="text-xs text-blue-600 hover:text-blue-700 font-medium"
+                          >
+                            Mark all read
+                          </button>
+                        )}
                       </div>
-                      <div className="max-h-96 overflow-y-auto">
-                        <div className="px-4 py-3 text-center text-gray-500 text-sm">
-                          No new notifications
+                      {notifications.length === 0 ? (
+                        <div className="px-4 py-8 text-center text-gray-500 text-sm">
+                          <Bell className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                          <p>No notifications</p>
                         </div>
-                      </div>
+                      ) : (
+                        notifications.map(notif => (
+                          <div
+                            key={notif._id}
+                            onClick={async () => {
+                              if (!notif.isRead) {
+                                try {
+                                  await API.put(`/notifications/${notif._id}/read`);
+                                  setNotifications(prev => prev.map(n => 
+                                    n._id === notif._id ? { ...n, isRead: true } : n
+                                  ));
+                                  setNotificationCount(prev => Math.max(0, prev - 1));
+                                } catch (err) {
+                                  console.error('Error marking as read:', err);
+                                }
+                              }
+                              setNotificationsOpen(false);
+                              // Navigate based on notification type
+                              if (notif.relatedModel === 'Order') {
+                                navigate('/orders');
+                              } else if (notif.relatedModel === 'Conversation') {
+                                navigate('/messages');
+                              } else if (notif.relatedModel === 'Job') {
+                                navigate('/jobs');
+                              }
+                            }}
+                            className={`px-4 py-3 hover:bg-gray-50 cursor-pointer transition border-b border-gray-100 last:border-0 ${!notif.isRead ? 'bg-blue-50' : ''}`}
+                          >
+                            <div className="flex items-start gap-3">
+                              {!notif.isRead && (
+                                <span className="w-2 h-2 bg-blue-600 rounded-full mt-2 flex-shrink-0"></span>
+                              )}
+                              <div className="flex-1 min-w-0">
+                                <p className="font-semibold text-sm text-gray-900 mb-1">
+                                  {notif.title}
+                                </p>
+                                <p className="text-xs text-gray-600 mb-1">
+                                  {notif.message}
+                                </p>
+                                <p className="text-xs text-gray-400">
+                                  {new Date(notif.createdAt).toLocaleDateString('en-US', {
+                                    month: 'short',
+                                    day: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                  })}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                      )}
                     </div>
                   )}
                 </div>
@@ -318,7 +453,7 @@ export default function Navbar() {
                         className="flex items-center gap-3 px-4 py-2 text-gray-700 hover:bg-gray-50 transition"
                         onClick={() => setUserMenuOpen(false)}
                       >
-                        <Settings className="w-4 h-4" />
+                        <MessageSquare className="w-4 h-4" />
                         <span>Messages</span>
                       </Link>
                       
@@ -468,6 +603,39 @@ export default function Navbar() {
                 </Link>
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Incoming Call Notification */}
+      {incomingCall && (
+        <div className="fixed bottom-4 right-4 bg-white rounded-xl shadow-2xl border border-gray-200 p-4 w-80 z-50 animate-slide-in-right">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center animate-pulse">
+              {incomingCall.callType === 'video' ? (
+                <Video className="text-blue-600" size={24} />
+              ) : (
+                <Phone className="text-blue-600" size={24} />
+              )}
+            </div>
+            <div className="flex-1">
+              <h4 className="font-semibold text-gray-900">Incoming {incomingCall.callType} call</h4>
+              <p className="text-sm text-gray-600">From conversation</p>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={handleRejectCall}
+              className="flex-1 px-4 py-2 bg-red-500 text-white rounded-lg font-medium hover:bg-red-600 transition"
+            >
+              Decline
+            </button>
+            <button
+              onClick={() => handleAcceptCall(incomingCall)}
+              className="flex-1 px-4 py-2 bg-green-500 text-white rounded-lg font-medium hover:bg-green-600 transition"
+            >
+              Accept
+            </button>
           </div>
         </div>
       )}

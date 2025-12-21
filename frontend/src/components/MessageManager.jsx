@@ -8,10 +8,10 @@ export default function MessageManager() {
   const [openChats, setOpenChats] = useState([]);
   const [notifications, setNotifications] = useState([]);
   const [minimizedChats, setMinimizedChats] = useState(new Set());
-  const user = JSON.parse(localStorage.getItem('user') || 'null');
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
 
   useEffect(() => {
-    if (!user) return;
+    if (!user?.id) return;
 
     socket.connect();
     socket.emit('user_online', user.id);
@@ -20,28 +20,51 @@ export default function MessageManager() {
       // Check if chat is already open
       const chatOpen = openChats.find(chat => chat.conversationId === data.conversationId);
       
-      if (!chatOpen && data.sender._id !== user.id) {
+      if (!chatOpen && data.sender?._id !== user.id) {
         // Show notification for new message
         setNotifications(prev => [...prev, { ...data, id: Date.now() }]);
       }
     };
 
+    const handleIncomingCall = (data) => {
+      console.log('Incoming call received in MessageManager:', data);
+      // Check if chat is already open for this conversation
+      const chatOpen = openChats.find(chat => chat.conversationId === data.conversationId);
+      
+      if (!chatOpen) {
+        // Auto-open chat with incoming call
+        openChatWithCall(data);
+      }
+    };
+
     socket.on('receive_message', handleNewMessage);
+    socket.on('call:incoming', handleIncomingCall);
 
     return () => {
       socket.off('receive_message', handleNewMessage);
+      socket.off('call:incoming', handleIncomingCall);
     };
-  }, [user, openChats]);
+  }, [user?.id, openChats]);
 
-  const openChat = async (conversationId, otherUser) => {
+  const openChat = async (conversationId, otherUser, incomingCall = null) => {
     // Check if already open
-    if (openChats.find(chat => chat.conversationId === conversationId)) {
+    const existingChat = openChats.find(chat => chat.conversationId === conversationId);
+    if (existingChat) {
       // Unminimize if minimized
       setMinimizedChats(prev => {
         const newSet = new Set(prev);
         newSet.delete(conversationId);
         return newSet;
       });
+      
+      // If there's an incoming call, update the chat with call data
+      if (incomingCall) {
+        setOpenChats(prev => prev.map(chat => 
+          chat.conversationId === conversationId 
+            ? { ...chat, incomingCall } 
+            : chat
+        ));
+      }
       return;
     }
 
@@ -51,7 +74,21 @@ export default function MessageManager() {
       return;
     }
 
-    setOpenChats(prev => [...prev, { conversationId, otherUser }]);
+    setOpenChats(prev => [...prev, { conversationId, otherUser, incomingCall }]);
+  };
+
+  const openChatWithCall = async (callData) => {
+    try {
+      // Fetch conversation details to get other user info
+      const response = await API.get(`/chat/conversations/${callData.conversationId}`);
+      const otherUser = response.data.participants.find(p => p._id !== user?.id);
+      
+      if (otherUser) {
+        openChat(callData.conversationId, otherUser, callData);
+      }
+    } catch (err) {
+      console.error('Error opening chat with call:', err);
+    }
   };
 
   const closeChat = (conversationId) => {
@@ -85,10 +122,13 @@ export default function MessageManager() {
     // Get conversation details
     try {
       const response = await API.get(`/chat/conversations/${notification.conversationId}`);
-      const otherUser = response.data.participants.find(p => p._id !== user.id);
-      openChat(notification.conversationId, otherUser);
+      const otherUser = response.data.participants.find(p => p._id !== user?.id);
+      if (otherUser) {
+        openChat(notification.conversationId, otherUser);
+      }
     } catch (err) {
       console.error('Error opening chat:', err);
+      alert('Failed to open chat. Please try again.');
     }
   };
 
@@ -116,6 +156,7 @@ export default function MessageManager() {
             onClose={() => closeChat(chat.conversationId)}
             onMinimize={() => toggleMinimize(chat.conversationId)}
             isMinimized={minimizedChats.has(chat.conversationId)}
+            incomingCall={chat.incomingCall}
           />
         </div>
       ))}

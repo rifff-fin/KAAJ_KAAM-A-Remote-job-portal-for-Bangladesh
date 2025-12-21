@@ -30,9 +30,9 @@ export default function GigDetails() {
     try {
       // Create or get conversation with seller
       const response = await API.post('/chat/conversations', {
-        participantId: gig.seller._id
+        participantId: gig.seller._id,
+        gigId: gig._id
       });
-
       const conversationId = response.data._id;
       const otherUser = gig.seller;
 

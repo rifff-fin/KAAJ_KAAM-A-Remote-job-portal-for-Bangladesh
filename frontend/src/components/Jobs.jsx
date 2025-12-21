@@ -51,7 +51,8 @@ export default function Jobs() {
 
       // Create or get conversation with client
       const response = await API.post('/chat/conversations', {
-        participantId: client._id
+        participantId: client._id,
+        jobId: jobId
       });
 
       const conversationId = response.data._id;

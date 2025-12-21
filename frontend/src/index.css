@@ -6,6 +6,64 @@
 @tailwind components;
 @tailwind utilities;
 
+@keyframes slide-in-right {
+  from {
+    transform: translateX(400px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-in-right {
+  animation: slide-in-right 0.3s ease-out;
+}
+
+/* Animation for message notifications */
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-slide-in-right {
+  animation: slideInRight 0.3s ease-out;
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.5s ease-out;
+}
+
+/* Delay utilities for typing animation */
+.delay-150 {
+  animation-delay: 150ms;
+}
+
+.delay-300 {
+  animation-delay: 300ms;
+}
+
+/* Mirror effect for video */
+.mirror {
+  transform: scaleX(-1);
+}
+
 
 /* Fade Up */
 @keyframes fade-up {
@@ -181,9 +239,18 @@ a:hover {
 ------------------------------------------------------ */
 
 .input-field {
-  @apply w-full px-4 py-3 border border-gray-300 rounded-lg;
-  @apply focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent;
-  transition: all .2s;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.5rem;
+  transition: all 0.2s;
+}
+
+.input-field:focus {
+  outline: none;
+  ring: 2px;
+  ring-color: #3b82f6;
+  border-color: transparent;
 }
 
 /* ------------------------------------------------------

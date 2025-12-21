@@ -54,14 +54,20 @@ const createOrderFromGig = async (req, res) => {
     });
 
     // Create notification for seller
-    await Notification.create({
+    const buyer = await User.findById(buyerId);
+    const notification = await Notification.create({
       recipient: gig.seller._id,
       type: 'gig_purchased',
       title: `New order for "${gig.title}"`,
-      message: `${(await User.findById(buyerId)).name} ordered your gig`,
+      message: `${buyer.name} ordered your gig`,
       relatedId: order._id,
       relatedModel: 'Order'
     });
+
+    // Emit socket notification
+    if (global.io) {
+      global.io.to(`user_${gig.seller._id}`).emit('new_notification', notification);
+    }
 
     // Update gig stats
     await Gig.findByIdAndUpdate(gigId, {
