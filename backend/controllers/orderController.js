@@ -33,6 +33,16 @@ const createOrderFromGig = async (req, res) => {
       }
     }
 
+    // Prevent duplicate in-process orders for the same gig by the same buyer
+    const existingInProcess = await Order.findOne({
+      buyer: buyerId,
+      gig: gigId,
+      status: { $in: ['pending', 'active'] }
+    });
+    if (existingInProcess) {
+      return res.status(409).json({ message: 'Order already in process' });
+    }
+
     // Create conversation
     const conversation = await Conversation.create({
       participants: [buyerId, gig.seller._id],
@@ -98,6 +108,17 @@ const createOrderFromProposal = async (req, res) => {
 
     if (proposal.job.postedBy.toString() !== buyerId) {
       return res.status(403).json({ message: 'Unauthorized' });
+    }
+
+    // Prevent duplicate in-process orders for the same job/proposal by the same buyer and seller
+    const existingJobOrder = await Order.findOne({
+      buyer: buyerId,
+      seller: proposal.seller._id,
+      job: proposal.job._id,
+      status: { $in: ['pending', 'active'] }
+    });
+    if (existingJobOrder) {
+      return res.status(409).json({ message: 'Order already in process' });
     }
 
     // Create conversation

@@ -49,6 +49,30 @@ export default function GigDetails() {
     }
   };
 
+  const handlePlaceOrder = async () => {
+    if (!user) {
+      alert('Please login to place an order');
+      navigate('/login');
+      return;
+    }
+    if (user.role !== 'buyer') {
+      alert('Only buyers can place orders.');
+      return;
+    }
+    if (gig?.seller?._id && (user._id || user.id) === gig.seller._id) {
+      alert('You cannot order your own gig.');
+      return;
+    }
+
+    try {
+      await API.post('/orders/from-gig', { gigId: gig._id });
+      navigate('/orders');
+    } catch (err) {
+      const msg = err?.response?.data?.message || 'Failed to place order';
+      alert(msg);
+    }
+  };
+
   if (loading) return <p className="text-center py-20">Loading...</p>;
   if (!gig) return null;
 
@@ -139,7 +163,7 @@ export default function GigDetails() {
                 {user?.role === 'buyer' && gig.seller?._id !== user.id && (
                   <>
                     <button
-                      onClick={() => alert('Order placement coming soon!')}
+                      onClick={handlePlaceOrder}
                       className="w-full bg-gradient-to-r from-green-600 to-emerald-600 text-white py-4 rounded-xl font-bold hover:shadow-lg transition-all transform hover:scale-105"
                     >
                       Place Your Order

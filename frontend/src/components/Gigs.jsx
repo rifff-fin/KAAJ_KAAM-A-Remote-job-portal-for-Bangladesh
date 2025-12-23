@@ -252,13 +252,15 @@ export default function Gigs() {
                     )}
                   </div>
                   
-                  {/* View Details Button */}
-                  <Link
-                    to={`/gig/${gig._id}`}
-                    className="block text-center py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium"
-                  >
-                    View Details
-                  </Link>
+                  {/* Actions */}
+                  <div className="grid grid-cols-1 gap-3">
+                    <Link
+                      to={`/gig/${gig._id}`}
+                      className="text-center py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium"
+                    >
+                      View Details
+                    </Link>
+                  </div>
                 </div>
               </div>
             ))}

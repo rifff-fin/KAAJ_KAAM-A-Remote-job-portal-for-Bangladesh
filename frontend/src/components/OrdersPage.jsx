@@ -15,7 +15,7 @@ export default function OrdersPage() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('all');
-  const [userRole, setUserRole] = useState('buyer');
+  const [userRole, setUserRole] = useState(null);
 
   const user = JSON.parse(localStorage.getItem('user') || 'null');
 
@@ -24,27 +24,42 @@ export default function OrdersPage() {
       navigate('/login');
       return;
     }
-    setUserRole(user.role);
+    const normalized =
+      user.role === 'client' ? 'buyer' :
+      user.role === 'freelancer' ? 'seller' :
+      user.role || 'buyer';
+    setUserRole(normalized);
+    // eslint-disable-next-line
+  }, []);
+
+  useEffect(() => {
+    if (!user || !userRole) return;
     fetchOrders();
     // eslint-disable-next-line
-  }, [activeTab]);
+  }, [activeTab, userRole]);
 
-  const fetchOrders = async () => {
-    try {
-      setLoading(true);
-      const res = await API.get('/orders', {
-        params: {
-          role: userRole,
-          status: activeTab === 'all' ? undefined : activeTab
-        }
-      });
-      setOrders(res.data.orders || []);
-    } catch (err) {
-      console.error('Error fetching orders:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
+const fetchOrders = async () => {
+  try {
+    setLoading(true);
+    const params = { role: userRole };
+    if (activeTab !== 'all') params.status = activeTab;
+
+    const res = await API.get('/orders', { params });
+    const incoming = res.data.orders || [];
+
+    // Filter orders so cancelled orders only appear in 'cancelled' tab
+    const filtered = activeTab === 'all'
+      ? incoming.filter(o => o.status !== 'cancelled') // exclude cancelled
+      : incoming;
+
+    setOrders(filtered);
+  } catch (err) {
+    console.error('Error fetching orders:', err);
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   const handleChat = (conversationId) => {
     navigate(`/chat/${conversationId}`);
@@ -178,6 +193,25 @@ export default function OrdersPage() {
                     icon={<FiMessageSquare />}
                     onClick={() => handleChat(order.conversationId)}
                   />
+                 {/* Buyer-only Confirm Payment */}
+  {userRole === "buyer" &&
+    order.status === "active" &&
+    order.paymentStatus === "pending" && (
+      <button
+        onClick={() => handleConfirmPayment(order._id)}
+        className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+      >
+        Confirm Payment
+      </button>
+  )}
+
+                  {userRole === 'seller' && order.status === 'pending' && (
+                    <ActionButton
+                      label="Confirm"
+                      color="green"
+                      onClick={() => handleStatusUpdate(order._id, 'active')}
+                    />
+                  )}
 
                   {userRole === 'seller' && order.status === 'active' && (
                     <ActionButton
@@ -218,6 +252,14 @@ export default function OrdersPage() {
     </div>
   );
 }
+const handleConfirmPayment = async (orderId) => {
+  try {
+    await API.put(`/orders/${orderId}/pay`);
+    fetchOrders(); // refresh orders
+  } catch (error) {
+    alert(error.response?.data?.message || "Payment failed");
+  }
+};
 
 /* ------------------ SMALL COMPONENTS ------------------ */
 
