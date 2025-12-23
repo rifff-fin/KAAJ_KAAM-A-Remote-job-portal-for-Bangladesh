@@ -311,7 +311,10 @@ const getPublicProfile = async (req, res) => {
       rating: user.rating,
       stats: {
         totalOrders: user.stats.totalOrders,
-        completedOrders: user.stats.completedOrders
+        completedOrders: user.stats.completedOrders,
+        cancelledOrders: user.stats.cancelledOrders,
+        totalEarnings: user.stats.totalEarnings,
+        xp: user.stats.xp
       },
       createdAt: user.createdAt
     };

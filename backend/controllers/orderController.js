@@ -84,6 +84,11 @@ const createOrderFromGig = async (req, res) => {
       $inc: { 'stats.orders': 1 }
     });
 
+    // Update buyer's total orders
+    await User.findByIdAndUpdate(buyerId, {
+      $inc: { 'stats.totalOrders': 1 }
+    });
+
     res.status(201).json(order);
   } catch (err) {
     console.error('Error in createOrderFromGig:', err);
@@ -143,6 +148,11 @@ const createOrderFromProposal = async (req, res) => {
 
     // Update proposal status
     await Proposal.findByIdAndUpdate(proposalId, { status: 'accepted' });
+
+    // Update buyer's total orders
+    await User.findByIdAndUpdate(buyerId, {
+      $inc: { 'stats.totalOrders': 1 }
+    });
 
     // Create notification
     await Notification.create({
@@ -246,12 +256,40 @@ const updateOrderStatus = async (req, res) => {
       return res.status(403).json({ message: 'Only buyer can approve' });
     }
 
+    const previousStatus = order.status;
     order.status = status;
     if (status === 'completed') {
       order.completionDate = new Date();
     }
 
     await order.save();
+
+    // Update user stats when order is completed
+    if (status === 'completed') {
+      // Update seller's completed orders and earnings
+      await User.findByIdAndUpdate(order.seller, {
+        $inc: {
+          'stats.completedOrders': 1,
+          'stats.totalEarnings': order.price
+        }
+      });
+
+      // Update buyer's completed orders
+      await User.findByIdAndUpdate(order.buyer, {
+        $inc: { 'stats.completedOrders': 1 }
+      });
+    }
+
+    // Update cancelled stats if order is cancelled
+    if (status === 'cancelled') {
+      await User.findByIdAndUpdate(order.seller, {
+        $inc: { 'stats.cancelledOrders': 1 }
+      });
+
+      await User.findByIdAndUpdate(order.buyer, {
+        $inc: { 'stats.cancelledOrders': 1 }
+      });
+    }
 
     // Create notification
     const recipient = status === 'completed' ? order.buyer : order.seller;
@@ -295,6 +333,15 @@ const cancelOrder = async (req, res) => {
 
     order.status = 'cancelled';
     await order.save();
+
+    // Update cancelled stats
+    await User.findByIdAndUpdate(order.seller, {
+      $inc: { 'stats.cancelledOrders': 1 }
+    });
+
+    await User.findByIdAndUpdate(order.buyer, {
+      $inc: { 'stats.cancelledOrders': 1 }
+    });
 
     res.json(order);
   } catch (err) {

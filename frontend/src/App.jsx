@@ -10,6 +10,7 @@ import Jobs from './components/Jobs';
 import Gigs from './components/Gigs';
 import GigDetails from './components/GigDetails';
 import OrdersPage from './components/OrdersPage';
+import ReviewPage from './components/ReviewPage';
 import ChatWindow from './components/ChatWindow';
 import MessagesList from './components/MessagesList';
 import Profile from './components/Profile';
@@ -35,6 +36,7 @@ function App() {
         <Route path="/gigs" element={<Gigs />} />
         <Route path="/gig/:id" element={<GigDetails />} />
         <Route path="/orders" element={<OrdersPage />} />
+        <Route path="/review/:orderId" element={<ReviewPage />} />
         <Route path="/messages" element={<MessagesList />} />
         <Route path="/chat/:conversationId" element={<ChatWindow />} />
         <Route path="/client-dashboard" element={<ClientDashboard />} />

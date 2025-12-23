@@ -45,6 +45,24 @@ export default function Profile() {
     }
   }, [navigate, userId]);
 
+  // Refresh reviews and stats when page comes back into focus
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && profileUser) {
+        fetchData(profileUser);
+        // Also refresh profile data to get updated stats
+        if (isOwnProfile) {
+          fetchProfileData();
+        } else {
+          fetchOtherUserProfile(profileUser._id || profileUser.id);
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [profileUser, isOwnProfile]);
+
   const fetchProfileData = async () => {
     try {
       const res = await API.get('/profile/me');
@@ -79,22 +97,26 @@ export default function Profile() {
   const fetchData = async (targetUser) => {
     setLoading(true);
     try {
-      // Fetch gigs or jobs
+      const userId = targetUser.id || targetUser._id;
+      
+      // Fetch gigs if seller
       if (targetUser.role === 'seller') {
-        const gigsRes = await API.get(`/gigs?sellerId=${targetUser.id || targetUser._id}`);
+        const gigsRes = await API.get(`/gigs?sellerId=${userId}`);
         setGigs(gigsRes.data.gigs || gigsRes.data);
-        
-        // Fetch reviews
-        try {
-          const reviewsRes = await API.get(`/reviews/user/${targetUser.id || targetUser._id}`);
-          setReviews(reviewsRes.data.reviews || []);
-        } catch (err) {
-          console.error('Error fetching reviews:', err);
-        }
       } else {
+        // Fetch jobs if buyer
         const jobsRes = await API.get('/jobs');
         const allJobs = Array.isArray(jobsRes.data) ? jobsRes.data : jobsRes.data.jobs || [];
-        setJobs(allJobs.filter(j => j.postedBy?._id === (targetUser.id || targetUser._id) || j.postedBy === (targetUser.id || targetUser._id)));
+        setJobs(allJobs.filter(j => j.postedBy?._id === userId || j.postedBy === userId));
+      }
+      
+      // Fetch reviews for all users (both buyers and sellers can be reviewed)
+      try {
+        const reviewsRes = await API.get(`/reviews/user/${userId}`);
+        setReviews(reviewsRes.data.reviews || []);
+      } catch (err) {
+        console.error('Error fetching reviews:', err);
+        setReviews([]);
       }
     } catch (err) {
       console.error('Error fetching data:', err);
@@ -268,14 +290,14 @@ export default function Profile() {
                   </div>
                   
                   {/* Rating */}
-                  {profileUser?.role === 'seller' && profileUser?.rating?.average > 0 && (
+                  {profileUser?.role === 'seller' && (
                     <div className="flex items-center gap-2 mt-3">
                       <div className="flex items-center gap-1">
                         {[...Array(5)].map((_, i) => (
                           <Star
                             key={i}
                             className={`w-5 h-5 ${
-                              i < Math.round(profileUser.rating.average)
+                              i < Math.round(profileUser.rating?.average || 0)
                                 ? 'fill-yellow-400 text-yellow-400'
                                 : 'text-gray-300'
                             }`}
@@ -283,9 +305,9 @@ export default function Profile() {
                         ))}
                       </div>
                       <span className="font-semibold text-gray-900">
-                        {formatRating(profileUser.rating.average)}
+                        {formatRating(profileUser.rating?.average || 0)}
                       </span>
-                      <span className="text-gray-500">({profileUser.rating.count} reviews)</span>
+                      <span className="text-gray-500">({profileUser.rating?.count || 0} reviews)</span>
                     </div>
                   )}
                 </div>
@@ -452,49 +474,47 @@ export default function Profile() {
             {activeTab === 'overview' && (
               <div className="space-y-8">
                 {/* Stats Grid */}
-                {user.role === 'seller' && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    <StatCard
-                      icon={Package}
-                      label="Total Orders"
-                      value={user.stats?.totalOrders || 0}
-                      color="blue"
-                    />
-                    <StatCard
-                      icon={CheckCircle}
-                      label="Completed"
-                      value={user.stats?.completedOrders || 0}
-                      color="green"
-                    />
-                    <StatCard
-                      icon={DollarSign}
-                      label="Total Earnings"
-                      value={formatCurrency(user.stats?.totalEarnings || 0)}
-                      color="purple"
-                    />
-                    <StatCard
-                      icon={Star}
-                      label="Average Rating"
-                      value={formatRating(user.rating?.average || 0)}
-                      color="orange"
-                    />
-                  </div>
-                )}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                  <StatCard
+                    icon={Package}
+                    label="Total Orders"
+                    value={profileUser.stats?.totalOrders || 0}
+                    color="blue"
+                  />
+                  <StatCard
+                    icon={CheckCircle}
+                    label="Completed"
+                    value={profileUser.stats?.completedOrders || 0}
+                    color="green"
+                  />
+                  <StatCard
+                    icon={DollarSign}
+                    label="Total Earnings"
+                    value={formatCurrency(profileUser.stats?.totalEarnings || 0)}
+                    color="purple"
+                  />
+                  <StatCard
+                    icon={Star}
+                    label="Average Rating"
+                    value={formatRating(profileUser.rating?.average || 0)}
+                    color="orange"
+                  />
+                </div>
 
                 {/* About Section */}
                 <div>
                   <h3 className="text-xl font-bold text-gray-900 mb-4">About</h3>
                   <p className="text-gray-700 leading-relaxed">
-                    {user.profile?.bio || 'No bio added yet.'}
+                    {profileUser.profile?.bio || 'No bio added yet.'}
                   </p>
                 </div>
 
                 {/* Skills */}
-                {user.profile?.skills && user.profile.skills.length > 0 && (
+                {profileUser.profile?.skills && profileUser.profile.skills.length > 0 && (
                   <div>
                     <h3 className="text-xl font-bold text-gray-900 mb-4">Skills</h3>
                     <div className="flex flex-wrap gap-2">
-                      {user.profile.skills.map((skill, idx) => (
+                      {profileUser.profile.skills.map((skill, idx) => (
                         <span
                           key={idx}
                           className="px-4 py-2 bg-blue-100 text-blue-700 rounded-lg font-medium"
@@ -510,38 +530,38 @@ export default function Profile() {
                 <div>
                   <h3 className="text-xl font-bold text-gray-900 mb-4">Contact Information</h3>
                   <div className="grid md:grid-cols-2 gap-4">
-                    {user.profile?.phone && (
+                    {profileUser.profile?.phone && (
                       <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg">
                         <Phone className="w-5 h-5 text-blue-600" />
                         <div>
                           <p className="text-sm text-gray-600">Phone</p>
-                          <p className="font-medium text-gray-900">{user.profile.phone}</p>
+                          <p className="font-medium text-gray-900">{profileUser.profile.phone}</p>
                         </div>
                       </div>
                     )}
-                    {user.profile?.website && (
+                    {profileUser.profile?.website && (
                       <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg">
                         <Globe className="w-5 h-5 text-blue-600" />
                         <div>
                           <p className="text-sm text-gray-600">Website</p>
                           <a
-                            href={user.profile.website}
+                            href={profileUser.profile.website}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="font-medium text-blue-600 hover:underline"
                           >
-                            {user.profile.website}
+                            {profileUser.profile.website}
                           </a>
                         </div>
                       </div>
                     )}
-                    {user.profile?.hourlyRate && (
+                    {profileUser.profile?.hourlyRate && (
                       <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg">
                         <DollarSign className="w-5 h-5 text-blue-600" />
                         <div>
                           <p className="text-sm text-gray-600">Hourly Rate</p>
                           <p className="font-medium text-gray-900">
-                            {formatCurrency(user.profile.hourlyRate)}/hr
+                            {formatCurrency(profileUser.profile.hourlyRate)}/hr
                           </p>
                         </div>
                       </div>
@@ -554,7 +574,7 @@ export default function Profile() {
             {/* Portfolio Tab */}
             {activeTab === 'portfolio' && (
               <div>
-                {user.role === 'seller' ? (
+                {profileUser.role === 'seller' ? (
                   <>
                     <div className="flex justify-between items-center mb-6">
                       <h3 className="text-2xl font-bold text-gray-900">My Gigs ({gigs.length})</h3>
@@ -688,22 +708,24 @@ export default function Profile() {
             )}
 
             {/* Stats Tab */}
-            {activeTab === 'stats' && user.role === 'seller' && (
+            {activeTab === 'stats' && (
               <div className="space-y-8">
-                <div>
-                  <h3 className="text-2xl font-bold text-gray-900 mb-6">Earnings Overview</h3>
-                  <div className="bg-gray-50 rounded-xl p-6">
-                    <ResponsiveContainer width="100%" height={300}>
-                      <LineChart data={earningsData}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="month" />
-                        <YAxis />
-                        <Tooltip />
-                        <Line type="monotone" dataKey="earnings" stroke="#3b82f6" strokeWidth={2} />
-                      </LineChart>
-                    </ResponsiveContainer>
+                {profileUser.role === 'seller' && (
+                  <div>
+                    <h3 className="text-2xl font-bold text-gray-900 mb-6">Earnings Overview</h3>
+                    <div className="bg-gray-50 rounded-xl p-6">
+                      <ResponsiveContainer width="100%" height={300}>
+                        <LineChart data={earningsData}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="month" />
+                          <YAxis />
+                          <Tooltip />
+                          <Line type="monotone" dataKey="earnings" stroke="#3b82f6" strokeWidth={2} />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
                   </div>
-                </div>
+                )}
 
                 <div>
                   <h3 className="text-2xl font-bold text-gray-900 mb-6">Performance Metrics</h3>
@@ -716,13 +738,13 @@ export default function Profile() {
                             <div className="flex justify-between text-sm mb-1">
                               <span className="capitalize text-gray-700">{metric}</span>
                               <span className="font-medium">
-                                {formatRating(user.rating?.breakdown?.[metric] || 0)}
+                                {formatRating(profileUser.rating?.breakdown?.[metric] || 0)}
                               </span>
                             </div>
                             <div className="w-full bg-gray-200 rounded-full h-2">
                               <div
                                 className="bg-blue-600 h-2 rounded-full"
-                                style={{ width: `${((user.rating?.breakdown?.[metric] || 0) / 5) * 100}%` }}
+                                style={{ width: `${((profileUser.rating?.breakdown?.[metric] || 0) / 5) * 100}%` }}
                               ></div>
                             </div>
                           </div>
@@ -736,18 +758,18 @@ export default function Profile() {
                         <div className="flex justify-between items-center">
                           <span className="text-gray-700">Completion Rate</span>
                           <span className="font-bold text-green-600">
-                            {user.stats?.totalOrders > 0
-                              ? Math.round((user.stats.completedOrders / user.stats.totalOrders) * 100)
+                            {profileUser.stats?.totalOrders > 0
+                              ? Math.round((profileUser.stats.completedOrders / profileUser.stats.totalOrders) * 100)
                               : 0}%
                           </span>
                         </div>
                         <div className="flex justify-between items-center">
                           <span className="text-gray-700">Total Orders</span>
-                          <span className="font-bold text-blue-600">{user.stats?.totalOrders || 0}</span>
+                          <span className="font-bold text-blue-600">{profileUser.stats?.totalOrders || 0}</span>
                         </div>
                         <div className="flex justify-between items-center">
                           <span className="text-gray-700">Cancelled Orders</span>
-                          <span className="font-bold text-red-600">{user.stats?.cancelledOrders || 0}</span>
+                          <span className="font-bold text-red-600">{profileUser.stats?.cancelledOrders || 0}</span>
                         </div>
                       </div>
                     </div>

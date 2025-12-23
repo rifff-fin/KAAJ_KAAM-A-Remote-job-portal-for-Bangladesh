@@ -69,6 +69,17 @@ const fetchOrders = async () => {
     try {
       await API.put(`/orders/${orderId}/status`, { status });
       fetchOrders();
+      
+      // Refresh user profile to update stats
+      try {
+        const profileRes = await API.get('/profile/me');
+        if (profileRes.data.success && profileRes.data.user) {
+          localStorage.setItem('user', JSON.stringify(profileRes.data.user));
+          window.dispatchEvent(new Event('userUpdated'));
+        }
+      } catch (err) {
+        console.error('Error refreshing profile:', err);
+      }
     } catch {
       alert('Failed to update order status');
     }
@@ -223,7 +234,7 @@ const fetchOrders = async () => {
                     />
                   )}
 
-                  {userRole === 'buyer' && order.status === 'completed' && (
+                  {order.status === 'completed' && (
                     <ActionButton
                       label="Leave Review"
                       color="purple"

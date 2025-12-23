@@ -7,7 +7,7 @@ const Notification = require('../models/Notification');
 // ────── Create Review ──────
 const createReview = async (req, res) => {
   try {
-    const { orderId, rating, comment, categories, isAnonymous } = req.body;
+    const { orderId, rating, comment, categories, isAnonymous, recommendation } = req.body;
     const reviewerId = req.user.id;
 
     // Validate order
@@ -16,14 +16,24 @@ const createReview = async (req, res) => {
       return res.status(404).json({ message: 'Order not found' });
     }
 
-    // Only buyer can review seller
-    if (order.buyer.toString() !== reviewerId) {
-      return res.status(403).json({ message: 'Only buyer can review' });
-    }
-
     // Check if order is completed
     if (order.status !== 'completed') {
       return res.status(400).json({ message: 'Order must be completed to review' });
+    }
+
+    // Determine reviewee based on reviewer role
+    let reviewee;
+    let isFreelancerReview = false;
+    if (order.buyer.toString() === reviewerId) {
+      // Buyer reviewing seller
+      reviewee = order.seller;
+      isFreelancerReview = false;
+    } else if (order.seller.toString() === reviewerId) {
+      // Seller reviewing buyer
+      reviewee = order.buyer;
+      isFreelancerReview = true;
+    } else {
+      return res.status(403).json({ message: 'You are not part of this order' });
     }
 
     // Check if already reviewed
@@ -32,29 +42,49 @@ const createReview = async (req, res) => {
       return res.status(400).json({ message: 'You already reviewed this order' });
     }
 
-    // Create review
-    const review = await Review.create({
+    // Create review with recommendation if freelancer is reviewing
+    const reviewData = {
       order: orderId,
       reviewer: reviewerId,
-      reviewee: order.seller,
+      reviewee: reviewee,
       rating,
       comment,
       categories: categories || {},
       isAnonymous: isAnonymous || false
-    });
-
-    // Update seller rating
-    const reviews = await Review.find({ reviewee: order.seller });
-    const avgRating = reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length;
-
-    const avgCategories = {
-      communication: reviews.reduce((sum, r) => sum + (r.categories?.communication || 0), 0) / reviews.length,
-      quality: reviews.reduce((sum, r) => sum + (r.categories?.quality || 0), 0) / reviews.length,
-      timeliness: reviews.reduce((sum, r) => sum + (r.categories?.timeliness || 0), 0) / reviews.length,
-      professionalism: reviews.reduce((sum, r) => sum + (r.categories?.professionalism || 0), 0) / reviews.length
     };
 
-    await User.findByIdAndUpdate(order.seller, {
+    if (isFreelancerReview && recommendation !== undefined) {
+      reviewData.recommendation = recommendation;
+    }
+
+    const review = await Review.create(reviewData);
+
+    // Update reviewee rating
+    const reviews = await Review.find({ reviewee: reviewee });
+    const avgRating = reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length;
+
+    // Calculate average categories based on review type
+    let avgCategories = {};
+    
+    if (isFreelancerReview) {
+      // For freelancer reviews, calculate client-specific metrics
+      avgCategories = {
+        clientBehavior: reviews.filter(r => r.categories?.clientBehavior).reduce((sum, r) => sum + (r.categories?.clientBehavior || 0), 0) / Math.max(reviews.filter(r => r.categories?.clientBehavior).length, 1),
+        clearInstructions: reviews.filter(r => r.categories?.clearInstructions).reduce((sum, r) => sum + (r.categories?.clearInstructions || 0), 0) / Math.max(reviews.filter(r => r.categories?.clearInstructions).length, 1),
+        communication: reviews.filter(r => r.categories?.communication).reduce((sum, r) => sum + (r.categories?.communication || 0), 0) / Math.max(reviews.filter(r => r.categories?.communication).length, 1),
+        paymentOnTime: reviews.filter(r => r.categories?.paymentOnTime).reduce((sum, r) => sum + (r.categories?.paymentOnTime || 0), 0) / Math.max(reviews.filter(r => r.categories?.paymentOnTime).length, 1)
+      };
+    } else {
+      // For buyer reviews, calculate freelancer metrics
+      avgCategories = {
+        communication: reviews.filter(r => r.categories?.communication).reduce((sum, r) => sum + (r.categories?.communication || 0), 0) / Math.max(reviews.filter(r => r.categories?.communication).length, 1),
+        quality: reviews.filter(r => r.categories?.quality).reduce((sum, r) => sum + (r.categories?.quality || 0), 0) / Math.max(reviews.filter(r => r.categories?.quality).length, 1),
+        timeliness: reviews.filter(r => r.categories?.timeliness).reduce((sum, r) => sum + (r.categories?.timeliness || 0), 0) / Math.max(reviews.filter(r => r.categories?.timeliness).length, 1),
+        professionalism: reviews.filter(r => r.categories?.professionalism).reduce((sum, r) => sum + (r.categories?.professionalism || 0), 0) / Math.max(reviews.filter(r => r.categories?.professionalism).length, 1)
+      };
+    }
+
+    await User.findByIdAndUpdate(reviewee, {
       'rating.average': avgRating,
       'rating.count': reviews.length,
       'rating.breakdown': avgCategories
@@ -62,7 +92,7 @@ const createReview = async (req, res) => {
 
     // Create notification
     const notification = await Notification.create({
-      recipient: order.seller,
+      recipient: reviewee,
       type: 'review_received',
       title: `New ${rating}-star review`,
       message: `You received a review: "${comment.substring(0, 50)}..."`,
@@ -72,7 +102,7 @@ const createReview = async (req, res) => {
 
     // Emit socket notification
     if (global.io) {
-      global.io.to(`user_${order.seller}`).emit('new_notification', notification);
+      global.io.to(`user_${reviewee}`).emit('new_notification', notification);
     }
 
     await review.populate('reviewer', 'name profile.avatar');

@@ -28,10 +28,19 @@ const reviewSchema = new mongoose.Schema({
     required: true
   },
   categories: {
+    // For buyer reviews (freelancer being reviewed)
     communication: { type: Number, min: 1, max: 5 },
     quality: { type: Number, min: 1, max: 5 },
     timeliness: { type: Number, min: 1, max: 5 },
-    professionalism: { type: Number, min: 1, max: 5 }
+    professionalism: { type: Number, min: 1, max: 5 },
+    // For freelancer reviews (client being reviewed)
+    clientBehavior: { type: Number, min: 1, max: 5 },
+    clearInstructions: { type: Number, min: 1, max: 5 },
+    paymentOnTime: { type: Number, min: 1, max: 5 }
+  },
+  recommendation: {
+    // Only for freelancer reviews of clients (true/false)
+    type: Boolean
   },
   isAnonymous: {
     type: Boolean,
