@@ -148,7 +148,7 @@ const getGivenReviews = async (req, res) => {
 
     const reviews = await Review.find({ reviewer: userId })
       .populate('reviewee', 'name profile.avatar')
-      .populate('order', 'title')
+      .populate('order', '_id title')
       .sort({ createdAt: -1 })
       .limit(parseInt(limit))
       .skip(parseInt(skip));

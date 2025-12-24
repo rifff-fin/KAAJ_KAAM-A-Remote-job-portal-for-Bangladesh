@@ -16,6 +16,8 @@ export default function OrdersPage() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('all');
   const [userRole, setUserRole] = useState(null);
+  const [reviewedOrders, setReviewedOrders] = useState(new Set());
+  const [error, setError] = useState('');
 
   const user = JSON.parse(localStorage.getItem('user') || 'null');
 
@@ -35,6 +37,7 @@ export default function OrdersPage() {
   useEffect(() => {
     if (!user || !userRole) return;
     fetchOrders();
+    fetchReviewedOrders();
     // eslint-disable-next-line
   }, [activeTab, userRole]);
 
@@ -57,6 +60,25 @@ const fetchOrders = async () => {
     console.error('Error fetching orders:', err);
   } finally {
     setLoading(false);
+  }
+};
+
+const fetchReviewedOrders = async () => {
+  try {
+    const res = await API.get('/reviews/my-reviews');
+    const reviews = res.data.reviews || [];
+    const reviewedOrderIds = new Set(
+      reviews.map(r => {
+        // Ensure we convert to string for proper comparison
+        const orderId = typeof r.order === 'object' ? r.order._id : r.order;
+        return String(orderId);
+      })
+    );
+    console.log('Fetched reviews:', reviews);
+    console.log('Reviewed order IDs:', Array.from(reviewedOrderIds));
+    setReviewedOrders(reviewedOrderIds);
+  } catch (err) {
+    console.error('Error fetching reviewed orders:', err);
   }
 };
 
@@ -111,6 +133,17 @@ const fetchOrders = async () => {
   return (
     <div className="min-h-screen bg-gray-100 p-5">
       <div className="max-w-6xl mx-auto">
+
+        {/* Error Message */}
+        {error && (
+          <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4 flex gap-3">
+            <div className="text-red-600 font-bold">!</div>
+            <div>
+              <p className="font-semibold text-red-800">Error</p>
+              <p className="text-sm text-red-700">{error}</p>
+            </div>
+          </div>
+        )}
 
         {/* Header */}
         <div className="mb-8">
@@ -235,11 +268,28 @@ const fetchOrders = async () => {
                   )}
 
                   {order.status === 'completed' && (
-                    <ActionButton
-                      label="Leave Review"
-                      color="purple"
-                      onClick={() => navigate(`/review/${order._id}`)}
-                    />
+                    (() => {
+                      const orderId = String(order._id);
+                      const isReviewed = reviewedOrders.has(orderId);
+                      console.log(`Order ${orderId} reviewed:`, isReviewed);
+                      return isReviewed ? (
+                        <ActionButton
+                          label="Reviewed"
+                          color="gray"
+                          onClick={() => {
+                            setError('You already reviewed this order');
+                            setTimeout(() => setError(''), 3000);
+                          }}
+                          disabled={true}
+                        />
+                      ) : (
+                        <ActionButton
+                          label="Leave Review"
+                          color="purple"
+                          onClick={() => navigate(`/review/${order._id}`)}
+                        />
+                      );
+                    })()
                   )}
 
                   {order.status !== 'completed' &&
@@ -283,7 +333,7 @@ function Detail({ label, value }) {
   );
 }
 
-function ActionButton({ label, onClick, color, icon }) {
+function ActionButton({ label, onClick, color, icon, disabled }) {
   const styles = {
     blue: 'bg-blue-500 hover:bg-blue-600 text-white',
     green: 'bg-green-500 hover:bg-green-600 text-white',
@@ -294,7 +344,8 @@ function ActionButton({ label, onClick, color, icon }) {
   return (
     <button
       onClick={onClick}
-      className={`flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium transition ${styles[color]}`}
+      disabled={disabled}
+      className={`flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium transition ${styles[color]} ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}
     >
       {icon}
       {label}

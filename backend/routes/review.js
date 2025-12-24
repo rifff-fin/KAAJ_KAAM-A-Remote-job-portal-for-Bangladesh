@@ -7,6 +7,9 @@ const reviewController = require('../controllers/reviewController');
 // Create review (authenticated)
 router.post('/', protect, reviewController.createReview);
 
+// Get user's given reviews (authenticated) - must come before :userId route
+router.get('/my-reviews', protect, reviewController.getGivenReviews);
+
 // Get reviews for a user (public)
 router.get('/user/:userId', reviewController.getUserReviews);
 
