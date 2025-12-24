@@ -11,13 +11,35 @@ export default function GigDetails() {
   const user = JSON.parse(localStorage.getItem('user') || 'null');
 
   useEffect(() => {
-    API.get(`/gigs/${id}`)
-      .then(res => setGig(res.data))
-      .catch(() => {
+    const fetchGigData = async () => {
+      try {
+        const gigRes = await API.get(`/gigs/${id}`);
+        const gigData = gigRes.data;
+        
+        // Fetch fresh seller data to get updated rating
+        if (gigData.seller?._id) {
+          try {
+            const sellerRes = await API.get(`/profile/${gigData.seller._id}`);
+            if (sellerRes.data.user) {
+              // Update gig with fresh seller data including rating
+              gigData.seller = sellerRes.data.user;
+            }
+          } catch (err) {
+            console.error('Error fetching seller profile:', err);
+            // Continue with gig data even if seller fetch fails
+          }
+        }
+        
+        setGig(gigData);
+      } catch (err) {
         alert('Gig not found');
         navigate('/');
-      })
-      .finally(() => setLoading(false));
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchGigData();
   }, [id, navigate]);
 
   const handleContactSeller = async () => {
@@ -110,7 +132,7 @@ export default function GigDetails() {
                 <div className="bg-gray-50 rounded-lg p-4 text-center">
                   <Star className="w-5 h-5 mx-auto mb-1 text-yellow-500" />
                   <p className="text-sm text-gray-600">Rating</p>
-                  <p className="font-bold text-gray-900">{gig.stats?.rating || 0}</p>
+                  <p className="font-bold text-gray-900">{gig.seller?.rating?.average ? gig.seller.rating.average.toFixed(1) : '0'}</p>
                 </div>
               </div>
             </div>
@@ -147,13 +169,17 @@ export default function GigDetails() {
                   <div>
                     <p className="font-semibold text-gray-900">{gig.seller?.name}</p>
                     <p className="text-sm text-gray-600">{gig.seller?.profile?.bio || 'Freelancer'}</p>
-                    {gig.seller?.rating?.average > 0 && (
-                      <div className="flex items-center gap-1 mt-1">
-                        <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
-                        <span className="text-sm font-medium">{gig.seller.rating.average.toFixed(1)}</span>
-                        <span className="text-sm text-gray-500">({gig.seller.rating.count} reviews)</span>
-                      </div>
-                    )}
+                    <div className="flex items-center gap-1 mt-1">
+                      <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
+                      {gig.seller?.rating?.average > 0 ? (
+                        <>
+                          <span className="text-sm font-medium">{gig.seller.rating.average.toFixed(1)}</span>
+                          <span className="text-sm text-gray-500">({gig.seller.rating.count} reviews)</span>
+                        </>
+                      ) : (
+                        <span className="text-sm text-gray-500">No reviews yet</span>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
