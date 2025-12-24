@@ -104,7 +104,7 @@ exports.getMyGigs = async (req, res) => {
 exports.getGig = async (req, res) => {
   try {
     const gig = await Gig.findById(req.params.id)
-      .populate('seller', 'name email profile');
+      .populate('seller', 'name email profile rating');
 
     if (!gig) {
       return res.status(404).json({ message: 'Gig not found' });

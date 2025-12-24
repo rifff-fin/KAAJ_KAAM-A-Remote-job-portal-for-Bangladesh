@@ -81,6 +81,7 @@ exports.getMyJobs = async (req, res) => {
 
     const jobs = await Job.find({ postedBy: req.user.id })
       .populate('hiredFreelancer', 'name email profile')
+      .populate('interests.freelancer', 'name email profile rating stats')
       .sort({ createdAt: -1 });
 
     res.json(jobs);
@@ -112,7 +113,7 @@ exports.getJob = async (req, res) => {
 // Show interest in a job (seller only)
 exports.showInterest = async (req, res) => {
   try {
-    const { message } = req.body;
+    const { message, proposedBudget, deliveryDays } = req.body;
 
     if (!message || !message.trim()) {
       return res.status(400).json({ message: 'Proposal message is required' });
@@ -142,15 +143,49 @@ exports.showInterest = async (req, res) => {
     });
 
     await job.save();
+    console.log('✓ Interest added to job:', job._id);
+
+    // Create a Proposal record for this interest
+    const Proposal = require('../models/Proposal');
+    const Order = require('../models/Order');
+    
+    const proposal = await Proposal.create({
+      job: job._id,
+      seller: req.user.id,
+      coverLetter: message.trim(),
+      proposedPrice: proposedBudget || job.budget,
+      deliveryDays: deliveryDays || 7
+    });
+    console.log('✓ Proposal created:', proposal._id);
+
+    // Create Order with pending status
+    const order = await Order.create({
+      buyer: job.postedBy,
+      seller: req.user.id,
+      job: job._id,
+      title: job.title,
+      description: message.trim(),
+      price: proposedBudget || job.budget,
+      deliveryDays: deliveryDays || 7,
+      status: 'pending'
+    });
+    console.log('✓ Order created with status PENDING:', order._id);
+    console.log('  - Buyer:', order.buyer);
+    console.log('  - Seller:', order.seller);
+    console.log('  - Job:', order.job);
+    console.log('  - Status:', order.status);
+
     const updatedJob = await job.populate('interests.freelancer', 'name email profile');
 
     res.json({
       success: true,
       message: 'Application submitted successfully',
-      job: updatedJob
+      job: updatedJob,
+      order
     });
   } catch (err) {
-    console.error('Show interest error:', err);
+    console.error('✗ Error in showInterest:', err.message);
+    console.error('Stack:', err.stack);
     res.status(500).json({ message: err.message });
   }
 };
@@ -168,37 +203,54 @@ exports.hireFreelancer = async (req, res) => {
     }
 
     const Proposal = require('../models/Proposal');
+    const Order = require('../models/Order');
+    
+    // Try to find the proposal (might not exist if using interests system)
     const proposal = await Proposal.findOne({ job: jobId, seller: freelancerId });
-    if (!proposal) {
-      return res.status(404).json({ message: 'Proposal not found for this freelancer' });
+    
+    // Update proposal if it exists
+    if (proposal) {
+      proposal.status = 'accepted';
+      await proposal.save();
     }
-
-    // Accept the proposal
-    proposal.status = 'accepted';
-    await proposal.save();
 
     // Update job status
     job.hiredFreelancer = freelancerId;
     job.status = 'in-progress';
     await job.save();
 
-    // Create an order
-    const Order = require('../models/Order');
-    const order = await Order.create({
-      buyer: userId,
-      seller: freelancerId,
-      job: jobId,
-      title: job.title,
-      description: job.description,
-      price: proposal.proposedPrice,
-      deliveryDays: proposal.deliveryDays,
-      dueDate: new Date(Date.now() + proposal.deliveryDays * 24 * 60 * 60 * 1000),
-      status: 'active'
-    });
+    // Find and update the pending order to active
+    const order = await Order.findOneAndUpdate(
+      { job: jobId, seller: freelancerId, status: 'pending' },
+      { status: 'active' },
+      { new: true }
+    );
+
+    // If no pending order exists, create one (fallback)
+    if (!order) {
+      const newOrder = await Order.create({
+        buyer: userId,
+        seller: freelancerId,
+        job: jobId,
+        title: job.title,
+        description: job.description,
+        price: proposal?.proposedPrice || job.budget,
+        deliveryDays: proposal?.deliveryDays || 7,
+        dueDate: new Date(Date.now() + (proposal?.deliveryDays || 7) * 24 * 60 * 60 * 1000),
+        status: 'active'
+      });
+
+      return res.json({
+        success: true,
+        message: 'Freelancer hired and order created',
+        job,
+        order: newOrder
+      });
+    }
 
     res.json({
       success: true,
-      message: 'Freelancer hired and order created',
+      message: 'Freelancer hired successfully',
       job,
       order
     });

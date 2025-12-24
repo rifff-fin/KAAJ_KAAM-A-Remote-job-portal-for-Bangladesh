@@ -30,6 +30,13 @@ export default function GigDetails() {
           }
         }
         
+        console.log('Gig seller ID:', gigData.seller?._id);
+        console.log('Current user ID:', user?.id, 'or', user?._id);
+        console.log('User role:', user?.role);
+        console.log('Are they equal (user.id === seller._id)?', user?.id === gigData.seller?._id);
+        console.log('Are they equal (user._id === seller._id)?', user?._id === gigData.seller?._id);
+        console.log('Full seller object:', gigData.seller);
+        console.log('Full user object:', user);
         setGig(gigData);
       } catch (err) {
         alert('Gig not found');
@@ -180,6 +187,9 @@ export default function GigDetails() {
                         <span className="text-sm text-gray-500">No reviews yet</span>
                       )}
                     </div>
+                    {user?.role === 'seller' && gig?.seller && String(user.id) === String(gig.seller?._id) && (
+                      <p className="text-blue-700 font-medium text-sm mt-2">This is your gig</p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -211,12 +221,6 @@ export default function GigDetails() {
                   >
                     Login to Place Order
                   </button>
-                )}
-
-                {user?.role === 'seller' && gig.seller?._id === user.id && (
-                  <div className="p-4 bg-blue-50 rounded-lg text-center">
-                    <p className="text-blue-700 font-medium">This is your gig</p>
-                  </div>
                 )}
               </div>
             </div>

@@ -3,6 +3,7 @@ const Proposal = require('../models/Proposal');
 const Job = require('../models/Job');
 const User = require('../models/User');
 const Notification = require('../models/Notification');
+const Order = require('../models/Order');
 
 // ────── Create Proposal ──────
 const createProposal = async (req, res) => {
@@ -34,6 +35,18 @@ const createProposal = async (req, res) => {
       coverLetter,
       proposedPrice,
       deliveryDays
+    });
+
+    // Create Order with pending status
+    const order = await Order.create({
+      buyer: job.postedBy._id,
+      seller: sellerId,
+      job: jobId,
+      title: job.title,
+      description: coverLetter,
+      price: proposedPrice,
+      deliveryDays: deliveryDays,
+      status: 'pending'
     });
 
     // Update job proposals count
@@ -147,16 +160,28 @@ const acceptProposal = async (req, res) => {
     proposal.respondedAt = new Date();
     await proposal.save();
 
+    // Update related Order to active
+    await Order.findOneAndUpdate(
+      { job: proposal.job._id, seller: proposal.seller._id, status: 'pending' },
+      { status: 'active' }
+    );
+
     // Update job status
     await Job.findByIdAndUpdate(proposal.job._id, {
       status: 'in-progress',
-      hiredSeller: proposal.seller._id
+      hiredFreelancer: proposal.seller._id
     });
 
     // Reject other proposals
     await Proposal.updateMany(
       { job: proposal.job._id, _id: { $ne: proposalId } },
       { status: 'rejected', respondedAt: new Date() }
+    );
+
+    // Reject other related orders (from other freelancers)
+    await Order.updateMany(
+      { job: proposal.job._id, _id: { $ne: proposal._id }, status: 'pending' },
+      { status: 'cancelled' }
     );
 
     // Create notifications
@@ -203,6 +228,12 @@ const rejectProposal = async (req, res) => {
     proposal.status = 'rejected';
     proposal.respondedAt = new Date();
     await proposal.save();
+
+    // Update related Order to cancelled
+    await Order.findOneAndUpdate(
+      { job: proposal.job._id, seller: proposal.seller._id, status: 'pending' },
+      { status: 'cancelled' }
+    );
 
     // Create notification
     const notification = await Notification.create({

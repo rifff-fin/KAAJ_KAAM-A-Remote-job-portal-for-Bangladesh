@@ -241,7 +241,7 @@ const updateOrderStatus = async (req, res) => {
     const { status } = req.body;
     const userId = req.user.id;
 
-    const order = await Order.findById(orderId);
+    const order = await Order.findById(orderId).populate('job');
     if (!order) {
       return res.status(404).json({ message: 'Order not found' });
     }
@@ -263,6 +263,17 @@ const updateOrderStatus = async (req, res) => {
     }
 
     await order.save();
+
+    // If order is being cancelled and is related to a job, unhire the freelancer
+    if (status === 'cancelled' && order.job) {
+      const Job = require('../models/Job');
+      await Job.findByIdAndUpdate(order.job._id, {
+        $set: {
+          hiredFreelancer: null,
+          status: 'open'
+        }
+      });
+    }
 
     // Update user stats when order is completed
     if (status === 'completed') {
@@ -315,7 +326,7 @@ const cancelOrder = async (req, res) => {
     const { orderId } = req.params;
     const userId = req.user.id;
 
-    const order = await Order.findById(orderId);
+    const order = await Order.findById(orderId).populate('job');
     if (!order) {
       return res.status(404).json({ message: 'Order not found' });
     }
@@ -333,6 +344,17 @@ const cancelOrder = async (req, res) => {
 
     order.status = 'cancelled';
     await order.save();
+
+    // If this order is related to a job, unhire the freelancer
+    if (order.job) {
+      const Job = require('../models/Job');
+      await Job.findByIdAndUpdate(order.job._id, {
+        $set: {
+          hiredFreelancer: null,
+          status: 'open'
+        }
+      });
+    }
 
     // Update cancelled stats
     await User.findByIdAndUpdate(order.seller, {

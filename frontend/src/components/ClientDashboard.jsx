@@ -349,7 +349,25 @@ export default function ClientDashboard() {
                                 <span className="hidden sm:inline">Message</span>
                               </button>
 
-                              {job.hiredFreelancer?._id !== interest.freelancer._id && (
+                              {job.hiredFreelancer?._id === interest.freelancer._id ? (
+                                <button
+                                  disabled
+                                  className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg cursor-not-allowed"
+                                  title="This freelancer is hired"
+                                >
+                                  <CheckCircle className="w-4 h-4" />
+                                  <span className="hidden sm:inline">Hired</span>
+                                </button>
+                              ) : job.hiredFreelancer ? (
+                                <button
+                                  disabled
+                                  className="flex items-center gap-2 px-4 py-2 bg-gray-400 text-white rounded-lg cursor-not-allowed"
+                                  title="Another freelancer is already hired for this job"
+                                >
+                                  <UserX className="w-4 h-4" />
+                                  <span className="hidden sm:inline">Unavailable</span>
+                                </button>
+                              ) : (
                                 <button
                                   onClick={() => hire(job._id, interest.freelancer._id)}
                                   className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
@@ -357,17 +375,6 @@ export default function ClientDashboard() {
                                 >
                                   <UserCheck className="w-4 h-4" />
                                   <span className="hidden sm:inline">Hire</span>
-                                </button>
-                              )}
-
-                              {job.hiredFreelancer?._id === interest.freelancer._id && (
-                                <button
-                                  onClick={() => unhire(job._id)}
-                                  className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
-                                  title="Unhire this freelancer"
-                                >
-                                  <UserX className="w-4 h-4" />
-                                  <span className="hidden sm:inline">Unhire</span>
                                 </button>
                               )}
                             </div>
