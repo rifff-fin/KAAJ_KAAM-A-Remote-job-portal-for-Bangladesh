@@ -215,16 +215,20 @@ const fetchReviewedOrders = async () => {
                   <Detail label="Delivery" value={`${order.deliveryDays} days`} />
                   <Detail
                     label="Due"
-                    value={formatDistanceToNow(new Date(order.dueDate), {
-                      addSuffix: true
-                    })}
+                    value={
+                      order.dueDate && !isNaN(new Date(order.dueDate).getTime())
+                        ? formatDistanceToNow(new Date(order.dueDate), {
+                            addSuffix: true
+                          })
+                        : 'Not set'
+                    }
                   />
                   <Detail
                     label={userRole === 'buyer' ? 'Seller' : 'Buyer'}
                     value={
                       userRole === 'buyer'
-                        ? order.seller?.name
-                        : order.buyer?.name
+                        ? order.seller?.name || 'Unknown'
+                        : order.buyer?.name || 'Unknown'
                     }
                   />
                 </div>
