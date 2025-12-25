@@ -19,7 +19,15 @@ const notificationSchema = new mongoose.Schema({
       'payment_received',
       'review_received',
       'job_posted',
-      'gig_purchased'
+      'gig_purchased',
+      'meeting_invite',
+      'meeting_accepted',
+      'meeting_declined',
+      'meeting_response',
+      'meeting_started',
+      'meeting_reminder',
+      'meeting_cancelled',
+      'meeting_rescheduled'
     ],
     required: true
   },
@@ -31,7 +39,7 @@ const notificationSchema = new mongoose.Schema({
   },
   relatedModel: {
     type: String,
-    enum: ['Order', 'Proposal', 'Job', 'Gig', 'Message', 'Review', 'Conversation']
+    enum: ['Order', 'Proposal', 'Job', 'Gig', 'Message', 'Review', 'Conversation', 'Meeting']
   },
   isRead: {
     type: Boolean,

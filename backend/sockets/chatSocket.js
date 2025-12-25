@@ -165,6 +165,36 @@ module.exports = (io) => {
       }
     });
 
+    // ────── Meeting Events ──────
+    
+    // Join meeting room
+    socket.on('meeting:join-room', (meetingId) => {
+      socket.join(`meeting_${meetingId}`);
+      console.log(`User ${userId} joined meeting room: ${meetingId}`);
+    });
+
+    // Leave meeting room
+    socket.on('meeting:leave-room', (meetingId) => {
+      socket.leave(`meeting_${meetingId}`);
+      console.log(`User ${userId} left meeting room: ${meetingId}`);
+    });
+
+    // Meeting participant joined
+    socket.on('meeting:participant-joined', ({ meetingId, participantId }) => {
+      io.to(`meeting_${meetingId}`).emit('meeting:participant-joined', {
+        participantId,
+        timestamp: new Date()
+      });
+    });
+
+    // Meeting participant left
+    socket.on('meeting:participant-left', ({ meetingId, participantId }) => {
+      io.to(`meeting_${meetingId}`).emit('meeting:participant-left', {
+        participantId,
+        timestamp: new Date()
+      });
+    });
+
     socket.on('disconnect', () => {
       console.log('User disconnected:', socket.id);
       socket.broadcast.emit('user_offline', { userId });

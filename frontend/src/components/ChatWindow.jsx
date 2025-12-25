@@ -4,9 +4,11 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { socket } from '../socket';
 import API from '../api';
 import { FiSend, FiPaperclip, FiX } from 'react-icons/fi';
-import { Phone, Video, PhoneIncoming, PhoneOutgoing, PhoneMissed, User, Mail, MapPin, Star, Briefcase, X, Info, FileText, Presentation, FileSpreadsheet, Table, Archive, Download, Image, Video as VideoIcon, File } from 'lucide-react';
+import { Phone, Video, PhoneIncoming, PhoneOutgoing, PhoneMissed, User, Mail, MapPin, Star, Briefcase, X, Info, FileText, Presentation, FileSpreadsheet, Table, Archive, Download, Image, Video as VideoIcon, File, Calendar, MessageSquare, Plus } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import VideoCallModal from './VideoCallModal';
+import ScheduleMeetingModal from './ScheduleMeetingModal';
+import MeetingInviteCard from './MeetingInviteCard';
 
 export default function ChatWindow() {
   const { conversationId } = useParams();
@@ -27,6 +29,9 @@ export default function ChatWindow() {
   const [incomingCall, setIncomingCall] = useState(null);
   const [showContactInfo, setShowContactInfo] = useState(false);
   const [showMediaPanel, setShowMediaPanel] = useState(false);
+  const [showScheduleMeeting, setShowScheduleMeeting] = useState(false);
+  const [activeTab, setActiveTab] = useState('messages'); // 'messages' or 'meetings'
+  const [meetings, setMeetings] = useState([]);
 
   const messagesEndRef = useRef(null);
   const typingTimeoutRef = useRef(null);
@@ -46,7 +51,7 @@ export default function ChatWindow() {
     }
   }, [location.state, location.pathname, navigate]);
 
-  /* Fetch conversation */
+  /* Fetch conversation and meetings */
   useEffect(() => {
     if (!user || !user.id) {
       console.error('No user found, redirecting to login');
@@ -60,16 +65,19 @@ export default function ChatWindow() {
         console.log('Fetching conversation:', conversationId);
         console.log('Current user:', user);
 
-        const [convRes, msgRes] = await Promise.all([
+        const [convRes, msgRes, meetingsRes] = await Promise.all([
           API.get(`/chat/conversations/${conversationId}`),
-          API.get(`/chat/conversations/${conversationId}/messages?limit=50`)
+          API.get(`/chat/conversations/${conversationId}/messages?limit=50`),
+          API.get(`/meetings/conversations/${conversationId}/meetings`)
         ]);
 
         console.log('Conversation data:', convRes.data);
         console.log('Messages data:', msgRes.data);
+        console.log('Meetings data:', meetingsRes.data);
 
         setConversation(convRes.data);
         setMessages(msgRes.data.messages || []);
+        setMeetings(meetingsRes.data.meetings || meetingsRes.data || []);
 
         await API.put(`/chat/conversations/${conversationId}/read`);
       } catch (err) {
@@ -104,12 +112,28 @@ export default function ChatWindow() {
       }
     };
 
+    const handleMeetingInvite = (data) => {
+      console.log('Meeting invite received:', data);
+      if (data.meeting) {
+        setMeetings(prev => [...prev, data.meeting]);
+      }
+    };
+
+    const handleMeetingUpdate = (data) => {
+      console.log('Meeting update received:', data);
+      setMeetings(prev => prev.map(m => m._id === data._id ? data : m));
+    };
+
     socket.on('receive_message', handleReceiveMessage);
     socket.on('user_online', () => setOtherUserOnline(true));
     socket.on('user_offline', () => setOtherUserOnline(false));
     socket.on('user_typing', () => setIsTyping(true));
     socket.on('user_stop_typing', () => setIsTyping(false));
     socket.on('call:incoming', handleIncomingCall);
+    socket.on('meeting:invite', handleMeetingInvite);
+    socket.on('meeting:accepted', handleMeetingUpdate);
+    socket.on('meeting:declined', handleMeetingUpdate);
+    socket.on('meeting:cancelled', handleMeetingUpdate);
 
     return () => {
       socket.emit('leave_conversation', conversationId);
@@ -119,6 +143,10 @@ export default function ChatWindow() {
       socket.off('user_typing');
       socket.off('user_stop_typing');
       socket.off('call:incoming');
+      socket.off('meeting:invite');
+      socket.off('meeting:accepted');
+      socket.off('meeting:declined');
+      socket.off('meeting:cancelled');
     };
   }, [conversationId, user?.id]);
 
@@ -311,8 +339,10 @@ export default function ChatWindow() {
       <div className="flex flex-col flex-1">
 
       {/* Header */}
-      <div className="flex items-center justify-between px-5 py-4 bg-white border-b shadow-sm">
-        <div className="flex items-center gap-3 flex-1 min-w-0">
+      <div className="flex flex-col bg-white border-b shadow-sm">
+        {/* Top Row - User Info & Actions */}
+        <div className="flex items-center justify-between px-5 py-4">
+          <div className="flex items-center gap-3 flex-1 min-w-0">
           <button
             onClick={() => navigate(`/profile/${otherUser?._id}`)}
             className="relative w-12 h-12 flex-shrink-0 hover:opacity-80 transition"
@@ -340,53 +370,100 @@ export default function ChatWindow() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowScheduleMeeting(true)}
+              className="p-2 rounded-lg hover:bg-gray-100 text-gray-600 transition"
+              title="Schedule Meeting"
+            >
+              <Calendar size={20} />
+            </button>
+            <button
+              onClick={() => initiateCall('audio')}
+              className="p-2 rounded-lg hover:bg-gray-100 text-gray-600 transition"
+              title="Voice Call"
+            >
+              <Phone size={20} />
+            </button>
+            <button
+              onClick={() => initiateCall('video')}
+              className="p-2 rounded-lg hover:bg-gray-100 text-gray-600 transition"
+              title="Video Call"
+            >
+              <Video size={20} />
+            </button>
+            <button
+              onClick={() => setShowContactInfo(!showContactInfo)}
+              className={`p-2 rounded-lg hover:bg-gray-100 text-gray-600 transition ${showContactInfo ? 'bg-gray-100' : ''}`}
+              title="Contact Info"
+            >
+              <Info size={20} />
+            </button>
+            <button
+              onClick={() => setShowMediaPanel(!showMediaPanel)}
+              className={`p-2 rounded-lg hover:bg-gray-100 text-gray-600 transition ${showMediaPanel ? 'bg-gray-100' : ''}`}
+              title="Media & Documents"
+            >
+              <Image size={20} />
+            </button>
+            <button
+              onClick={() => navigate('/messages')}
+              className="p-2 rounded-lg hover:bg-gray-100 text-gray-600 transition"
+            >
+              <FiX size={22} />
+            </button>
+          </div>
+        </div>
+
+        {/* Tabs Row */}
+        <div className="flex border-t border-gray-100">
           <button
-            onClick={() => initiateCall('audio')}
-            className="p-2 rounded-lg hover:bg-gray-100 text-gray-600 transition"
-            title="Voice Call"
+            onClick={() => setActiveTab('messages')}
+            className={`flex-1 py-3 text-sm font-medium transition relative ${
+              activeTab === 'messages'
+                ? 'text-blue-600'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
           >
-            <Phone size={20} />
+            <MessageSquare size={16} className="inline mr-2" />
+            Messages
+            {activeTab === 'messages' && (
+              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600"></div>
+            )}
           </button>
           <button
-            onClick={() => initiateCall('video')}
-            className="p-2 rounded-lg hover:bg-gray-100 text-gray-600 transition"
-            title="Video Call"
+            onClick={() => setActiveTab('meetings')}
+            className={`flex-1 py-3 text-sm font-medium transition relative ${
+              activeTab === 'meetings'
+                ? 'text-blue-600'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
           >
-            <Video size={20} />
-          </button>
-          <button
-            onClick={() => setShowContactInfo(!showContactInfo)}
-            className={`p-2 rounded-lg hover:bg-gray-100 text-gray-600 transition ${showContactInfo ? 'bg-gray-100' : ''}`}
-            title="Contact Info"
-          >
-            <Info size={20} />
-          </button>
-          <button
-            onClick={() => setShowMediaPanel(!showMediaPanel)}
-            className={`p-2 rounded-lg hover:bg-gray-100 text-gray-600 transition ${showMediaPanel ? 'bg-gray-100' : ''}`}
-            title="Media & Documents"
-          >
-            <Image size={20} />
-          </button>
-          <button
-            onClick={() => navigate('/messages')}
-            className="p-2 rounded-lg hover:bg-gray-100 text-gray-600 transition"
-          >
-            <FiX size={22} />
+            <Calendar size={16} className="inline mr-2" />
+            Meetings
+            {meetings.filter(m => ['pending', 'accepted'].includes(m.status)).length > 0 && (
+              <span className="ml-1 px-1.5 py-0.5 bg-blue-600 text-white text-xs rounded-full">
+                {meetings.filter(m => ['pending', 'accepted'].includes(m.status)).length}
+              </span>
+            )}
+            {activeTab === 'meetings' && (
+              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600"></div>
+            )}
           </button>
         </div>
       </div>
 
-      {/* Messages */}
+      {/* Content Area - Messages or Meetings */}
       <div className="flex-1 overflow-y-auto p-5 space-y-3">
-        {messages.length === 0 && (
-          <div className="flex items-center justify-center h-full text-gray-400">
-            No messages yet. Start the conversation!
-          </div>
-        )}
+        {activeTab === 'messages' ? (
+          <>
+            {messages.length === 0 && (
+              <div className="flex items-center justify-center h-full text-gray-400">
+                No messages yet. Start the conversation!
+              </div>
+            )}
 
-        {messages.map((msg, i) => {
+            {messages.map((msg, i) => {
           const mine = msg.sender?._id?.toString() === user.id?.toString();
           
           // Render call message
@@ -508,20 +585,59 @@ export default function ChatWindow() {
                 </span>
               </div>
             </div>
-          );
-        })}
+              );
+            })}
 
-        {isTyping && (
-          <div className="flex items-center gap-2">
-            <div className="px-4 py-2 bg-white border rounded-xl flex gap-1">
-              <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" />
-              <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-150" />
-              <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-300" />
-            </div>
+            {isTyping && (
+              <div className="flex items-center gap-2">
+                <div className="px-4 py-2 bg-white border rounded-xl flex gap-1">
+                  <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" />
+                  <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-150" />
+                  <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-300" />
+                </div>
+              </div>
+            )}
+
+            <div ref={messagesEndRef} />
+          </>
+        ) : (
+          <div className="space-y-3">
+            {/* Schedule Meeting Button */}
+            <button
+              onClick={() => setShowScheduleMeeting(true)}
+              className="w-full py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition font-medium shadow-lg flex items-center justify-center gap-2"
+            >
+              <Plus size={20} />
+              Schedule New Meeting
+            </button>
+
+            {/* Meetings List */}
+            {meetings.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-64 text-center">
+                <Calendar size={64} className="text-gray-300 mb-4" />
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">No meetings scheduled</h3>
+                <p className="text-sm text-gray-600 mb-4">
+                  Schedule your first meeting to discuss project details
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {meetings
+                  .sort((a, b) => new Date(b.scheduledDate) - new Date(a.scheduledDate))
+                  .map(meeting => (
+                    <MeetingInviteCard
+                      key={meeting._id}
+                      meeting={meeting}
+                      currentUserId={user.id}
+                      onUpdate={(updatedMeeting) => {
+                        setMeetings(prev => prev.map(m => m._id === updatedMeeting._id ? updatedMeeting : m));
+                      }}
+                    />
+                  ))}
+              </div>
+            )}
           </div>
         )}
-
-        <div ref={messagesEndRef} />
       </div>
 
       {/* Input */}
@@ -588,6 +704,19 @@ export default function ChatWindow() {
               setShowCallModal(false);
               setIncomingCall(null);
               setCallType(null);
+            }}
+          />
+        )}
+
+        {/* Schedule Meeting Modal */}
+        {showScheduleMeeting && (
+          <ScheduleMeetingModal
+            conversationId={conversationId}
+            orderId={conversation?.orderId}
+            onClose={() => setShowScheduleMeeting(false)}
+            onSuccess={(meeting) => {
+              setMeetings(prev => [...prev, meeting]);
+              setActiveTab('meetings');
             }}
           />
         )}

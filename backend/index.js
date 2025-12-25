@@ -44,6 +44,7 @@ app.use('/api/orders', require('./routes/order'));
 app.use('/api/proposals', require('./routes/proposal'));
 app.use('/api/reviews', require('./routes/review'));
 app.use('/api/notifications', require('./routes/notification'));
+app.use('/api/meetings', require('./routes/meeting'));
 
 // Error handling middleware
 app.use((err, req, res, next) => {
@@ -64,12 +65,17 @@ const io = new Server(server, {
 app.set('io', io);
 require('./sockets/chatSocket')(io);
 
+// Initialize meeting reminders
+const { initializeMeetingReminders } = require('./utils/meetingReminders');
+
 // Start Server
 const startServer = async () => {
   try {
     await connectDB();
     server.listen(PORT, () => {
       console.log(`✓ Server running on http://localhost:${PORT}`);
+      // Initialize meeting reminders after server starts
+      initializeMeetingReminders(io);
     });
   } catch (err) {
     console.error('✗ Failed to start server:', err.message);

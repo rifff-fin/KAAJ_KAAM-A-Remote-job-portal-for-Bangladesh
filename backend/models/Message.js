@@ -22,8 +22,12 @@ const messageSchema = new mongoose.Schema({
   },
   messageType: {
     type: String,
-    enum: ['text', 'call'],
+    enum: ['text', 'call', 'meeting', 'system'],
     default: 'text'
+  },
+  meetingId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Meeting'
   },
   callInfo: {
     callType: {
