@@ -15,8 +15,10 @@ const messageSchema = new mongoose.Schema({
   text: {
     type: String,
     required: function() {
-      return this.messageType !== 'call';
-    }
+      // Text is required only for text messages without attachments
+      return this.messageType !== 'call' && (!this.attachments || this.attachments.length === 0);
+    },
+    default: ''
   },
   messageType: {
     type: String,
@@ -38,13 +40,16 @@ const messageSchema = new mongoose.Schema({
       ref: 'User'
     }
   },
-  attachments: [
-    {
-      url: String,
-      type: String, // 'image', 'file', 'video'
-      name: String
-    }
-  ],
+  attachments: {
+    type: [{
+      url: { type: String, required: true },
+      type: { type: String, required: true }, // 'image', 'video', 'pdf', 'doc', 'ppt', 'xls', 'txt', 'csv', 'zip', 'file'
+      name: { type: String, required: true },
+      size: { type: Number },
+      _id: false
+    }],
+    default: []
+  },
   readBy: [
     {
       userId: {

@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { Star, User } from 'lucide-react';
 import { formatRelativeTime } from '../utils/formatters';
 
@@ -34,9 +35,16 @@ export default function ReviewCard({ review }) {
         
         <div className="flex-1">
           <div className="flex items-center justify-between mb-1">
-            <h4 className="font-semibold text-gray-900">
-              {review.isAnonymous ? 'Anonymous User' : review.reviewer?.name || 'User'}
-            </h4>
+            {review.isAnonymous ? (
+              <h4 className="font-semibold text-gray-900">Anonymous User</h4>
+            ) : (
+              <Link
+                to={`/profile/${review.reviewer?._id}`}
+                className="font-semibold text-gray-900 hover:text-blue-600 transition"
+              >
+                {review.reviewer?.name || 'User'}
+              </Link>
+            )}
             <span className="text-sm text-gray-500">
               {formatRelativeTime(review.createdAt)}
             </span>

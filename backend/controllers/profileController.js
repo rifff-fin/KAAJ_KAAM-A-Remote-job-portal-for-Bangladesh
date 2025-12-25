@@ -160,7 +160,11 @@ const updateSellerProfile = async (req, res) => {
       phone,
       website,
       hourlyRate,
-      availability
+      availability,
+      languages,
+      experience,
+      education,
+      responseTime
     } = req.body;
 
     // Update top-level name field
@@ -195,6 +199,12 @@ const updateSellerProfile = async (req, res) => {
       user.profile.availability = availability;
     }
 
+    // Update new fields
+    if (languages) user.profile.languages = languages;
+    if (experience) user.profile.experience = experience;
+    if (education) user.profile.education = education;
+    if (responseTime) user.profile.responseTime = responseTime;
+
     await user.save();
 
     res.status(200).json({
@@ -208,9 +218,11 @@ const updateSellerProfile = async (req, res) => {
         profile: user.profile,
         rating: user.rating,
         stats: user.stats,
+        badges: user.badges,
         wallet: user.wallet,
         isVerified: user.isVerified,
         isActive: user.isActive,
+        lastActive: user.lastActive,
         createdAt: user.createdAt
       }
     });
@@ -239,7 +251,10 @@ const updateBuyerProfile = async (req, res) => {
       bio,
       location,
       phone,
-      website
+      website,
+      companyName,
+      industry,
+      projectPreferences
     } = req.body;
 
     // Update top-level name field
@@ -253,6 +268,9 @@ const updateBuyerProfile = async (req, res) => {
     if (location !== undefined) user.profile.location = location;
     if (phone !== undefined) user.profile.phone = phone;
     if (website !== undefined) user.profile.website = website;
+    if (companyName !== undefined) user.profile.companyName = companyName;
+    if (industry !== undefined) user.profile.industry = industry;
+    if (projectPreferences) user.profile.projectPreferences = projectPreferences;
 
     await user.save();
 
@@ -267,9 +285,11 @@ const updateBuyerProfile = async (req, res) => {
         profile: user.profile,
         rating: user.rating,
         stats: user.stats,
+        badges: user.badges,
         wallet: user.wallet,
         isVerified: user.isVerified,
         isActive: user.isActive,
+        lastActive: user.lastActive,
         createdAt: user.createdAt
       }
     });
@@ -306,16 +326,20 @@ const getPublicProfile = async (req, res) => {
         location: user.profile.location,
         website: user.profile.website,
         hourlyRate: user.profile.hourlyRate,
-        availability: user.profile.availability
+        availability: user.profile.availability,
+        languages: user.profile.languages,
+        experience: user.profile.experience,
+        education: user.profile.education,
+        responseTime: user.profile.responseTime,
+        companyName: user.profile.companyName,
+        industry: user.profile.industry,
+        projectPreferences: user.profile.projectPreferences
       },
       rating: user.rating,
-      stats: {
-        totalOrders: user.stats.totalOrders,
-        completedOrders: user.stats.completedOrders,
-        cancelledOrders: user.stats.cancelledOrders,
-        totalEarnings: user.stats.totalEarnings,
-        xp: user.stats.xp
-      },
+      stats: user.stats,
+      badges: user.badges,
+      isVerified: user.isVerified,
+      lastActive: user.lastActive,
       createdAt: user.createdAt
     };
 
@@ -418,6 +442,108 @@ const updateUserStats = async (userId, statsUpdate) => {
   }
 };
 
+// Block a user
+const blockUser = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { targetUserId } = req.body;
+
+    if (userId === targetUserId) {
+      return res.status(400).json({ message: 'You cannot block yourself' });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    if (user.blockedUsers.includes(targetUserId)) {
+      return res.status(400).json({ message: 'User already blocked' });
+    }
+
+    user.blockedUsers.push(targetUserId);
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'User blocked successfully'
+    });
+  } catch (error) {
+    console.error('Block user error:', error);
+    res.status(500).json({ message: 'Error blocking user', error: error.message });
+  }
+};
+
+// Unblock a user
+const unblockUser = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { targetUserId } = req.body;
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    user.blockedUsers = user.blockedUsers.filter(id => id.toString() !== targetUserId);
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'User unblocked successfully'
+    });
+  } catch (error) {
+    console.error('Unblock user error:', error);
+    res.status(500).json({ message: 'Error unblocking user', error: error.message });
+  }
+};
+
+// Report a user
+const reportUser = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { targetUserId, reason } = req.body;
+
+    if (userId === targetUserId) {
+      return res.status(400).json({ message: 'You cannot report yourself' });
+    }
+
+    if (!reason || reason.trim().length < 10) {
+      return res.status(400).json({ message: 'Please provide a detailed reason (at least 10 characters)' });
+    }
+
+    const targetUser = await User.findById(targetUserId);
+    if (!targetUser) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Check if already reported by this user
+    const alreadyReported = targetUser.reportedBy.some(
+      report => report.user.toString() === userId
+    );
+
+    if (alreadyReported) {
+      return res.status(400).json({ message: 'You have already reported this user' });
+    }
+
+    targetUser.reportedBy.push({
+      user: userId,
+      reason: reason.trim(),
+      reportedAt: new Date()
+    });
+
+    await targetUser.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'User reported successfully. Our team will review this report.'
+    });
+  } catch (error) {
+    console.error('Report user error:', error);
+    res.status(500).json({ message: 'Error reporting user', error: error.message });
+  }
+};
+
 module.exports = {
   getProfile,
   updateProfile,
@@ -426,5 +552,8 @@ module.exports = {
   updateBuyerProfile,
   getPublicProfile,
   searchSellers,
-  updateUserStats
+  updateUserStats,
+  blockUser,
+  unblockUser,
+  reportUser
 };

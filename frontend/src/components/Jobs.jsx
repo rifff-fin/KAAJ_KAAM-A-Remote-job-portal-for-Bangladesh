@@ -9,6 +9,7 @@ export default function Jobs() {
   const [category, setCategory] = useState('all');
   const [loading, setLoading] = useState(true);
   const [applying, setApplying] = useState(null);
+  const [showAll, setShowAll] = useState(false);
 
   const navigate = useNavigate();
   const user = JSON.parse(localStorage.getItem('user') || 'null');
@@ -139,9 +140,10 @@ export default function Jobs() {
             )}
           </div>
         ) : (
-          /* Jobs Grid */
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {jobs.map(job => (
+          <>
+            {/* Jobs Grid */}
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {(showAll ? jobs : jobs.slice(0, 9)).map(job => (
               <div
                 key={job._id}
                 className="bg-white border border-gray-200 rounded-2xl p-6
@@ -225,8 +227,35 @@ export default function Jobs() {
                   )}
                 </div>
               </div>
-            ))}
-          </div>
+              ))}
+            </div>
+
+            {/* View More Button */}
+            {!showAll && jobs.length > 9 && (
+              <div className="text-center mt-8">
+                <button
+                  onClick={() => setShowAll(true)}
+                  className="px-8 py-3 bg-gradient-to-r from-teal-600 to-cyan-600 text-white rounded-xl hover:shadow-lg transition font-semibold"
+                >
+                  View More ({jobs.length - 9} more jobs)
+                </button>
+              </div>
+            )}
+
+            {showAll && jobs.length > 9 && (
+              <div className="text-center mt-8">
+                <button
+                  onClick={() => {
+                    setShowAll(false);
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                  className="px-8 py-3 bg-gray-600 text-white rounded-xl hover:shadow-lg transition font-semibold"
+                >
+                  Show Less
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

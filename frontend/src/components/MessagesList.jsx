@@ -1,6 +1,6 @@
 // frontend/src/components/MessagesList.jsx
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import API from '../api';
 import { socket } from '../socket';
 import { MessageSquare, Search } from 'lucide-react';
@@ -15,10 +15,11 @@ export default function MessagesList() {
   const [onlineUsers, setOnlineUsers] = useState(new Set());
   const [showAll, setShowAll] = useState(false);
   const fetchingRef = React.useRef(false);
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const user = JSON.parse(localStorage.getItem('user') || 'null');
 
   useEffect(() => {
-    if (!user?.id) {
+    if (!user || !user.id) {
+      console.log('No user found in MessagesList, redirecting to login');
       navigate('/login');
       return;
     }
@@ -259,14 +260,16 @@ export default function MessagesList() {
                   >
                     {/* Avatar */}
                     <div className="relative flex-shrink-0">
-                      <img
-                        src={
-                          otherUser?.profile?.avatar ||
-                          `https://ui-avatars.com/api/?name=${encodeURIComponent(otherUser?.name || 'User')}&background=3B82F6&color=fff&bold=true`
-                        }
-                        alt={otherUser?.name}
-                        className="w-14 h-14 rounded-full object-cover border-2 border-white shadow-sm"
-                      />
+                      <Link to={`/profile/${otherUser?._id}`}>
+                        <img
+                          src={
+                            otherUser?.profile?.avatar ||
+                            `https://ui-avatars.com/api/?name=${encodeURIComponent(otherUser?.name || 'User')}&background=3B82F6&color=fff&bold=true`
+                          }
+                          alt={otherUser?.name}
+                          className="w-14 h-14 rounded-full object-cover border-2 border-white shadow-sm hover:opacity-80 transition"
+                        />
+                      </Link>
                       {/* Online/Active indicator */}
                       {(onlineUsers.has(otherUser._id) || isUserActive(conv.updatedAt)) && (
                         <span className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 rounded-full border-2 border-white"></span>
@@ -283,11 +286,14 @@ export default function MessagesList() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-baseline justify-between gap-2 mb-1">
                         <div className="flex items-center gap-2 flex-1 min-w-0">
-                          <h4 className={`text-base font-semibold truncate ${
-                            isUnread ? 'text-gray-900' : 'text-gray-800'
-                          }`}>
+                          <Link
+                            to={`/profile/${otherUser?._id}`}
+                            className={`text-base font-semibold truncate hover:text-blue-600 transition ${
+                              isUnread ? 'text-gray-900' : 'text-gray-800'
+                            }`}
+                          >
                             {otherUser?.name}
-                          </h4>
+                          </Link>
                           {(onlineUsers.has(otherUser._id) || isUserActive(conv.updatedAt)) && (
                             <span className="text-xs text-green-600 font-medium flex-shrink-0">
                               Active now

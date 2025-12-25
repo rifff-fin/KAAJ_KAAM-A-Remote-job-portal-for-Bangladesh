@@ -28,6 +28,8 @@ export default function VideoCallModal({
   const durationIntervalRef = useRef(null);
   const incomingOfferRef = useRef(null);
   const ringtoneRef = useRef(null);
+  const callTimeoutRef = useRef(null);
+  const isCleaningUpRef = useRef(false);
 
   const user = JSON.parse(localStorage.getItem('user') || '{}');
 
@@ -50,13 +52,27 @@ export default function VideoCallModal({
     }
 
     // Create ringtone audio
-    ringtoneRef.current = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
-    ringtoneRef.current.loop = true;
+    const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+    audio.loop = true;
+    ringtoneRef.current = audio;
 
-    // Play ringtone for incoming or outgoing calls
+    // Play ringtone for incoming or outgoing calls with user interaction
     if (isIncoming || callStatus === 'calling') {
-      playRingtone();
+      // Delay to allow user interaction
+      const playPromise = audio.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(err => console.log('Ringtone autoplay prevented:', err.message));
+      }
     }
+
+    // Set call timeout - 30 seconds for outgoing, 60 seconds for incoming
+    const timeoutDuration = isIncoming ? 60000 : 30000;
+    callTimeoutRef.current = setTimeout(() => {
+      if (callStatus !== 'connected') {
+        console.log('Call timeout, auto-rejecting');
+        handleCallTimeout();
+      }
+    }, timeoutDuration);
 
     // Socket listeners
     socket.on('call:accepted', handleCallAccepted);
@@ -75,6 +91,9 @@ export default function VideoCallModal({
 
     return () => {
       console.log('VideoCallModal unmounting - cleaning up');
+      if (callTimeoutRef.current) {
+        clearTimeout(callTimeoutRef.current);
+      }
       stopRingtone();
       cleanup();
       socket.off('call:accepted', handleCallAccepted);
@@ -86,6 +105,30 @@ export default function VideoCallModal({
       socket.off('webrtc:ice-candidate', handleIceCandidate);
     };
   }, []);
+
+  const handleCallTimeout = async () => {
+    console.log('Call timeout');
+    stopRingtone();
+    
+    // Save missed call record
+    try {
+      await API.post(`/chat/conversations/${conversationId}/call-record`, {
+        callType,
+        duration: 0,
+        status: isIncoming ? 'missed' : 'declined'
+      });
+    } catch (error) {
+      console.error('Error saving call record:', error);
+    }
+    
+    if (!isIncoming) {
+      // Notify other user that call timed out
+      socket.emit('call:end', { conversationId, to: otherUser._id });
+    }
+    
+    cleanup();
+    onClose();
+  };
 
   const playRingtone = () => {
     if (ringtoneRef.current) {
@@ -207,19 +250,42 @@ export default function VideoCallModal({
   const acceptCall = async () => {
     console.log('Accepting call');
     stopRingtone();
+    if (callTimeoutRef.current) {
+      clearTimeout(callTimeoutRef.current);
+    }
     setCallStatus('connecting');
     await initializeCall(true);
   };
 
-  const rejectCall = () => {
+  const rejectCall = async () => {
     console.log('Rejecting call');
     stopRingtone();
+    if (callTimeoutRef.current) {
+      clearTimeout(callTimeoutRef.current);
+    }
+    
+    // Save declined call record
+    try {
+      await API.post(`/chat/conversations/${conversationId}/call-record`, {
+        callType,
+        duration: 0,
+        status: 'declined'
+      });
+    } catch (error) {
+      console.error('Error saving call record:', error);
+    }
+    
     socket.emit('call:reject', { conversationId, to: otherUser._id });
+    cleanup();
     onClose();
   };
 
   const handleCallAccepted = async ({ answer }) => {
     console.log('Call accepted, received answer');
+    stopRingtone();
+    if (callTimeoutRef.current) {
+      clearTimeout(callTimeoutRef.current);
+    }
     setCallStatus('connecting');
     
     if (peerConnectionRef.current && answer) {
@@ -233,27 +299,39 @@ export default function VideoCallModal({
   };
 
   const handleCallRejected = async () => {
-    console.log('Call rejected');
+    console.log('Call rejected by other user');
     stopRingtone();
-    
-    // Save missed/declined call record
-    try {
-      await API.post(`/chat/conversations/${conversationId}/call-record`, {
-        callType,
-        duration: 0,
-        status: 'declined'
-      });
-    } catch (error) {
-      console.error('Error saving call record:', error);
+    if (callTimeoutRef.current) {
+      clearTimeout(callTimeoutRef.current);
     }
     
-    alert('Call was rejected');
+    // Don't save record here - the other user already saved it
+    cleanup();
     onClose();
   };
 
-  const handleCallEnded = () => {
+  const handleCallEnded = async () => {
     console.log('Call ended by other user');
     stopRingtone();
+    if (callTimeoutRef.current) {
+      clearTimeout(callTimeoutRef.current);
+    }
+    
+    // If call was connected, other user already saved the record
+    // If not connected, save as missed/cancelled
+    if (callStatus !== 'connected') {
+      try {
+        await API.post(`/chat/conversations/${conversationId}/call-record`, {
+          callType,
+          duration: 0,
+          status: isIncoming ? 'missed' : 'failed'
+        });
+      } catch (error) {
+        console.error('Error saving call record:', error);
+      }
+    }
+    
+    cleanup();
     onClose();
   };
 
@@ -304,6 +382,9 @@ export default function VideoCallModal({
   const startCallTimer = () => {
     console.log('Starting call timer');
     stopRingtone(); // Stop ringtone when call connects
+    if (callTimeoutRef.current) {
+      clearTimeout(callTimeoutRef.current);
+    }
     callStartTimeRef.current = Date.now();
     durationIntervalRef.current = setInterval(() => {
       setCallDuration(Math.floor((Date.now() - callStartTimeRef.current) / 1000));
@@ -360,24 +441,36 @@ export default function VideoCallModal({
   };
 
   const endCall = async () => {
-    console.log('Ending call');
-    stopRingtone();
-    
-    // Save call record if call was connected
-    if (callStatus === 'connected' && callDuration > 0) {
-      try {
-        await API.post(`/chat/conversations/${conversationId}/call-record`, {
-          callType,
-          duration: callDuration,
-          status: 'completed'
-        });
-        console.log('Call record saved');
-      } catch (error) {
-        console.error('Error saving call record:', error);
-      }
+    if (isCleaningUpRef.current) {
+      console.log('Already cleaning up, skipping');
+      return;
     }
     
+    console.log('Ending call');
+    isCleaningUpRef.current = true;
+    stopRingtone();
+    if (callTimeoutRef.current) {
+      clearTimeout(callTimeoutRef.current);
+    }
+    
+    // Save call record
+    try {
+      const duration = callStatus === 'connected' ? callDuration : 0;
+      const status = callStatus === 'connected' ? 'completed' : (isIncoming ? 'missed' : 'failed');
+      
+      await API.post(`/chat/conversations/${conversationId}/call-record`, {
+        callType,
+        duration,
+        status
+      });
+      console.log('Call record saved:', status, duration);
+    } catch (error) {
+      console.error('Error saving call record:', error);
+    }
+    
+    // Notify other user
     socket.emit('call:end', { conversationId, to: otherUser._id });
+    
     cleanup();
     onClose();
   };
@@ -385,15 +478,30 @@ export default function VideoCallModal({
   const cleanup = () => {
     console.log('Cleaning up resources');
     stopRingtone();
-    if (localStream) {
-      localStream.getTracks().forEach(track => track.stop());
+    
+    if (callTimeoutRef.current) {
+      clearTimeout(callTimeoutRef.current);
     }
-    if (peerConnectionRef.current) {
-      peerConnectionRef.current.close();
-    }
+    
     if (durationIntervalRef.current) {
       clearInterval(durationIntervalRef.current);
     }
+    
+    if (localStream) {
+      localStream.getTracks().forEach(track => {
+        track.stop();
+        console.log('Stopped track:', track.kind);
+      });
+      setLocalStream(null);
+    }
+    
+    if (peerConnectionRef.current) {
+      peerConnectionRef.current.close();
+      peerConnectionRef.current = null;
+      console.log('Peer connection closed');
+    }
+    
+    setRemoteStream(null);
   };
 
   const formatDuration = (seconds) => {

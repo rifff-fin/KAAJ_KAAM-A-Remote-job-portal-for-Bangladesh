@@ -95,7 +95,14 @@ export default function Navbar() {
 
     socket.on('call:incoming', (data) => {
       console.log('Incoming call received in Navbar:', data);
-      setIncomingCall(data);
+      // Only set incoming call if no call is currently displayed
+      setIncomingCall(prevCall => {
+        if (prevCall) {
+          console.log('Call already displayed, ignoring new call');
+          return prevCall;
+        }
+        return data;
+      });
     });
 
     socket.on('new_notification', () => {
@@ -177,6 +184,18 @@ export default function Navbar() {
       setIncomingCall(null);
     }
   };
+
+  // Clear incoming call after 30 seconds if not answered
+  useEffect(() => {
+    if (incomingCall) {
+      const timeout = setTimeout(() => {
+        console.log('Call timeout, auto-rejecting');
+        handleRejectCall();
+      }, 30000);
+
+      return () => clearTimeout(timeout);
+    }
+  }, [incomingCall]);
 
   return (
     <nav className="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
@@ -287,22 +306,27 @@ export default function Navbar() {
                               }}
                               className={`px-4 py-3 hover:bg-gray-50 cursor-pointer transition ${hasUnread ? 'bg-blue-50' : ''}`}
                             >
-                              <div className="flex items-center gap-3">
-                                <div className="relative flex-shrink-0">
-                                  <img
-                                    src={getAvatarUrl(otherUser?.profile?.avatar, otherUser?.name)}
-                                    alt={otherUser?.name}
-                                    onError={(e) => e.currentTarget.src = `https://i.pravatar.cc/40?u=${otherUser?._id}`}
-                                    className="w-10 h-10 rounded-full object-cover"
-                                  />
-                                  {hasUnread && (
-                                    <span className="absolute -top-1 -right-1 w-3 h-3 bg-blue-600 rounded-full border-2 border-white"></span>
-                                  )}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <p className="font-semibold text-sm text-gray-900 truncate">
-                                    {otherUser?.name}
-                                  </p>
+                    <div className="flex items-center gap-3">
+                      <div className="relative flex-shrink-0">
+                        <Link to={`/profile/${otherUser?._id}`}>
+                          <img
+                            src={getAvatarUrl(otherUser?.profile?.avatar, otherUser?.name)}
+                            alt={otherUser?.name}
+                            onError={(e) => e.currentTarget.src = `https://i.pravatar.cc/40?u=${otherUser?._id}`}
+                            className="w-10 h-10 rounded-full object-cover hover:opacity-80 transition"
+                          />
+                        </Link>
+                        {hasUnread && (
+                          <span className="absolute -top-1 -right-1 w-3 h-3 bg-blue-600 rounded-full border-2 border-white"></span>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <Link
+                          to={`/profile/${otherUser?._id}`}
+                          className="font-semibold text-sm text-gray-900 truncate hover:text-blue-600 transition block"
+                        >
+                          {otherUser?.name}
+                        </Link>
                                   <p className="text-xs text-gray-600 truncate">
                                     {conv.lastMessage?.text || 'No messages yet'}
                                   </p>

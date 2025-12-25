@@ -2,6 +2,7 @@
 const express = require('express');
 const router = express.Router();
 const { protect } = require('../middleware/auth');
+const upload = require('../middleware/upload');
 const chatController = require('../controllers/chatController');
 
 // Test endpoint (no auth required)
@@ -20,7 +21,7 @@ router.delete('/conversations/:conversationId', chatController.deleteConversatio
 
 // Message routes
 router.get('/conversations/:conversationId/messages', chatController.getMessages);
-router.post('/conversations/:conversationId/messages', chatController.sendMessage);
+router.post('/conversations/:conversationId/messages', upload.array('attachments', 5), chatController.sendMessage);
 router.post('/conversations/:conversationId/call-record', chatController.saveCallRecord);
 router.put('/conversations/:conversationId/read', chatController.markAsRead);
 

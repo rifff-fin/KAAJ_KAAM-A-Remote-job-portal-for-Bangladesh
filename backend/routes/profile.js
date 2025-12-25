@@ -9,7 +9,10 @@ const {
   updateSellerProfile,
   updateBuyerProfile,
   getPublicProfile,
-  searchSellers
+  searchSellers,
+  blockUser,
+  unblockUser,
+  reportUser
 } = require('../controllers/profileController');
 
 // Get current user's profile
@@ -26,6 +29,11 @@ router.put('/seller', protect, updateSellerProfile);
 
 // Buyer-specific profile update
 router.put('/buyer', protect, updateBuyerProfile);
+
+// Block/Unblock/Report user
+router.post('/block', protect, blockUser);
+router.post('/unblock', protect, unblockUser);
+router.post('/report', protect, reportUser);
 
 // Search sellers
 router.get('/sellers/search', searchSellers);

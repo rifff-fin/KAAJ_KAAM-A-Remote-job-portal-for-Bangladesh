@@ -157,10 +157,67 @@ const getMessages = async (req, res) => {
 const sendMessage = async (req, res) => {
   try {
     const { conversationId } = req.params;
-    const { text, attachments } = req.body;
+    const { text } = req.body;
     const userId = req.user.id;
+    
+    // Handle file attachments
+    let attachments = [];
+    if (req.files && req.files.length > 0) {
+      const cloudinary = require('../config/cloudinary');
+      const fs = require('fs');
+      
+      for (const file of req.files) {
+        try {
+          // Determine resource type and file type
+          let resourceType = 'raw';
+          let fileType = 'file';
+          
+          if (file.mimetype.startsWith('image/')) {
+            resourceType = 'image';
+            fileType = 'image';
+          } else if (file.mimetype.startsWith('video/')) {
+            resourceType = 'video';
+            fileType = 'video';
+          } else if (file.mimetype === 'application/pdf') {
+            fileType = 'pdf';
+          } else if (file.mimetype.includes('word') || file.originalname.match(/\.(doc|docx)$/i)) {
+            fileType = 'doc';
+          } else if (file.mimetype.includes('powerpoint') || file.originalname.match(/\.(ppt|pptx)$/i)) {
+            fileType = 'ppt';
+          } else if (file.mimetype.includes('excel') || file.mimetype.includes('spreadsheet') || file.originalname.match(/\.(xls|xlsx)$/i)) {
+            fileType = 'xls';
+          } else if (file.mimetype === 'text/plain' || file.originalname.match(/\.txt$/i)) {
+            fileType = 'txt';
+          } else if (file.mimetype === 'text/csv' || file.originalname.match(/\.csv$/i)) {
+            fileType = 'csv';
+          } else if (file.mimetype.includes('zip') || file.mimetype.includes('rar')) {
+            fileType = 'zip';
+          }
+          
+          const result = await cloudinary.uploader.upload(file.path, {
+            folder: 'kaaj-kaam/chat-attachments',
+            resource_type: resourceType
+          });
+          
+          attachments.push({
+            url: result.secure_url,
+            type: fileType,
+            name: file.originalname,
+            size: file.size
+          });
+          
+          // Delete local file
+          fs.unlink(file.path, () => {});
+        } catch (uploadErr) {
+          console.error('Error uploading file:', uploadErr);
+        }
+      }
+    }
 
-    if (!text && (!attachments || attachments.length === 0)) {
+    // Trim text and check if we have content
+    const trimmedText = text?.trim();
+    
+    if (!trimmedText && attachments.length === 0) {
       return res.status(400).json({ message: 'Message text or attachments required' });
     }
 
@@ -174,20 +231,36 @@ const sendMessage = async (req, res) => {
       return res.status(403).json({ message: 'Unauthorized - You are not a participant in this conversation' });
     }
 
-    // Create message
-    const message = await Message.create({
+    // Create message - only include text if it's not empty
+    const messageData = {
       conversationId,
       sender: userId,
-      text,
-      attachments: attachments || []
-    });
+      attachments: attachments.length > 0 ? attachments : []
+    };
+    
+    // Add text only if it exists and is not empty
+    if (trimmedText) {
+      messageData.text = trimmedText;
+    } else if (attachments.length > 0) {
+      // If we have attachments but no text, provide a default message
+      messageData.text = '';
+    }
 
-    // Update conversation
+    // Debug logging
+    console.log('Creating message with data:', JSON.stringify(messageData, null, 2));
+    console.log('Attachments type:', typeof messageData.attachments);
+    console.log('Attachments is array:', Array.isArray(messageData.attachments));
+
+    const message = await Message.create(messageData);
+
+    // Update conversation - use appropriate text for last message
+    const lastMessageText = trimmedText || (attachments.length > 0 ? '📎 Attachment' : '');
+    
     await Conversation.findByIdAndUpdate(
       conversationId,
       {
         lastMessage: {
-          text,
+          text: lastMessageText,
           sender: userId,
           timestamp: new Date()
         },
@@ -205,8 +278,8 @@ const sendMessage = async (req, res) => {
         _id: message._id,
         conversationId,
         sender: message.sender,
-        text,
-        attachments: attachments || [],
+        text: message.text || '',
+        attachments: message.attachments || [],
         createdAt: message.createdAt
       };
 
@@ -223,11 +296,17 @@ const sendMessage = async (req, res) => {
 
         try {
           const Notification = require('../models/Notification');
+          const notificationMessage = trimmedText 
+            ? `You have a new message: "${trimmedText.substring(0, 50)}..."` 
+            : attachments.length > 0 
+              ? `You have a new message with ${attachments.length} attachment(s)`
+              : 'You have a new message';
+          
           await Notification.create({
             recipient: otherParticipant,
             type: 'new_message',
             title: 'New message',
-            message: `You have a new message: "${text.substring(0, 50)}..."`,
+            message: notificationMessage,
             relatedId: conversationId,
             relatedModel: 'Conversation'
           });

@@ -10,6 +10,7 @@ export default function Gigs() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [loading, setLoading] = useState(true);
+  const [showAll, setShowAll] = useState(false);
   const navigate = useNavigate();
   const user = JSON.parse(localStorage.getItem('user') || 'null');
 
@@ -161,8 +162,9 @@ export default function Gigs() {
             )}
           </div>
         ) : (
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredGigs.map(gig => (
+          <>
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {(showAll ? filteredGigs : filteredGigs.slice(0, 12)).map(gig => (
               <div
                 key={gig._id}
                 className="bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300 group"
@@ -263,8 +265,35 @@ export default function Gigs() {
                   </div>
                 </div>
               </div>
-            ))}
-          </div>
+              ))}
+            </div>
+
+            {/* View More Button */}
+            {!showAll && filteredGigs.length > 12 && (
+              <div className="text-center mt-8">
+                <button
+                  onClick={() => setShowAll(true)}
+                  className="px-8 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:shadow-lg transition font-semibold"
+                >
+                  View More ({filteredGigs.length - 12} more gigs)
+                </button>
+              </div>
+            )}
+
+            {showAll && filteredGigs.length > 12 && (
+              <div className="text-center mt-8">
+                <button
+                  onClick={() => {
+                    setShowAll(false);
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                  className="px-8 py-3 bg-gray-600 text-white rounded-xl hover:shadow-lg transition font-semibold"
+                >
+                  Show Less
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>
