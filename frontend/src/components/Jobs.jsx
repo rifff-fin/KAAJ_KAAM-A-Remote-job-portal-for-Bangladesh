@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import API from '../api';
 import { Link, useNavigate } from 'react-router-dom';
+import { Briefcase } from 'lucide-react';
 import ApplyJobModal from './ApplyJobModal';
 
 export default function Jobs() {
@@ -67,45 +68,58 @@ export default function Jobs() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-teal-50 to-cyan-50 py-12 px-4">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-12 px-4">
       <div className="max-w-7xl mx-auto">
 
         {/* Header */}
         <div className="text-center mb-10">
-          <h1 className="text-4xl font-bold text-gray-800">Available Work</h1>
-          <p className="text-gray-600 mt-2">Browse jobs posted by clients</p>
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-teal-500 to-cyan-600 rounded-2xl mb-4 shadow-lg">
+            <Briefcase className="w-8 h-8 text-white" />
+          </div>
+          <h1 className="text-4xl font-bold text-gray-900 mb-2">Available Work</h1>
+          <p className="text-gray-600 text-lg">Browse jobs posted by clients and find your next project</p>
         </div>
 
         {/* Filters */}
-        <div className="bg-white p-6 rounded-xl shadow-md mb-8">
+        <div className="bg-white p-6 rounded-2xl shadow-xl mb-8 border border-gray-100">
           <div className="grid md:grid-cols-2 gap-4">
-            <input
-              type="text"
-              placeholder="Search by title, skills, or client..."
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm
-                         focus:outline-none focus:border-blue-500
-                         focus:ring-4 focus:ring-blue-500/10"
-            />
+            <div className="space-y-2">
+              <label className="block text-sm font-semibold text-gray-700 uppercase tracking-wide">
+                Search Jobs
+              </label>
+              <input
+                type="text"
+                placeholder="Search by title, skills, or client..."
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl
+                           focus:outline-none focus:border-teal-500
+                           focus:ring-2 focus:ring-teal-500/20 transition-all"
+              />
+            </div>
 
-            <select
-              value={category}
-              onChange={e => setCategory(e.target.value)}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm
-                         focus:outline-none focus:border-blue-500
-                         focus:ring-4 focus:ring-blue-500/10"
-            >
-              <option value="all">All Categories</option>
-              <option value="web">Web Development</option>
-              <option value="design">Graphic Design</option>
-              <option value="writing">Content Writing</option>
-              <option value="video">Video Editing</option>
-              <option value="marketing">Digital Marketing</option>
-              <option value="mobile">Mobile App</option>
-              <option value="data">Data Entry</option>
-              <option value="other">Other</option>
-            </select>
+            <div className="space-y-2">
+              <label className="block text-sm font-semibold text-gray-700 uppercase tracking-wide">
+                Filter by Category
+              </label>
+              <select
+                value={category}
+                onChange={e => setCategory(e.target.value)}
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl
+                           focus:outline-none focus:border-teal-500
+                           focus:ring-2 focus:ring-teal-500/20 transition-all bg-white cursor-pointer"
+              >
+                <option value="all">All Categories</option>
+                <option value="web">Web Development</option>
+                <option value="design">Graphic Design</option>
+                <option value="writing">Content Writing</option>
+                <option value="video">Video Editing</option>
+                <option value="marketing">Digital Marketing</option>
+                <option value="mobile">Mobile App</option>
+                <option value="data">Data Entry</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
           </div>
         </div>
 

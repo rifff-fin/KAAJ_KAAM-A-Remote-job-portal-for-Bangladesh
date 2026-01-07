@@ -290,10 +290,9 @@ export default function Navbar() {
               Feed
             </Link>
             <Link
-              to="/"
+              to="/gigs"
               className="text-gray-700 hover:text-blue-600 font-medium transition"
             >
-
               Gigs
             </Link>
 
