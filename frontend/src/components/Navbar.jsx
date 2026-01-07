@@ -289,6 +289,12 @@ export default function Navbar() {
             >
               Gigs
             </Link>
+            <Link
+              to="/feed"
+              className="text-gray-700 hover:text-blue-600 font-medium transition"
+            >
+              Feed
+            </Link>
 
             {user?.role === "seller" && (
               <>
@@ -689,6 +695,14 @@ export default function Navbar() {
               onClick={() => setMobileOpen(false)}
             >
               Gigs
+            </Link>
+
+            <Link
+              to="/feed"
+              className="block px-3 py-2 text-gray-700 hover:bg-gray-50 rounded-lg transition"
+              onClick={() => setMobileOpen(false)}
+            >
+              Feed
             </Link>
 
             {user?.role === "seller" && (
