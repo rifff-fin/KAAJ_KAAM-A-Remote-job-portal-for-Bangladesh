@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import API from '../api';
 import { useNavigate } from 'react-router-dom';
+import Toast from './Toast';
 
 export default function CreateGig() {
   const [form, setForm] = useState({
     title: '', description: '', category: 'web', price: '', deliveryTime: '', image: null
   });
   const [loading, setLoading] = useState(false);
+  const [toast, setToast] = useState(null);
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
@@ -16,10 +18,10 @@ export default function CreateGig() {
     Object.keys(form).forEach(key => data.append(key, form[key]));
     try {
       await API.post('/gigs', data);
-      alert('Gig created!');
-      navigate('/seller-dashboard');
+      setToast({ message: 'Gig created successfully!', type: 'success' });
+      setTimeout(() => navigate('/seller-dashboard'), 2000);
     } catch (err) {
-      alert(err.response?.data?.message || 'Error');
+      setToast({ message: err.response?.data?.message || 'Error creating gig', type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -27,6 +29,15 @@ export default function CreateGig() {
 
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4">
+      {/* Toast Notification */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
+
       <div className="max-w-2xl mx-auto bg-white rounded-xl shadow-lg p-8">
         <h2 className="text-3xl font-bold mb-6">Create New Gig</h2>
         <form onSubmit={handleSubmit} className="space-y-5">

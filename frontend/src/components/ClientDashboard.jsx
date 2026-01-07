@@ -4,6 +4,8 @@ import { Plus, Briefcase, Users, CheckCircle, Clock, MessageSquare, UserCheck, U
 import API from '../api';
 import StatCard from './StatCard';
 import ApplyJobModal from './ApplyJobModal';
+import Toast from './Toast';
+import ConfirmationModal from './ConfirmationModal';
 import { formatCurrency, formatDate } from '../utils/formatters';
 
 export default function ClientDashboard() {
@@ -12,6 +14,8 @@ export default function ClientDashboard() {
   const [stats, setStats] = useState(null);
   const [selectedJob, setSelectedJob] = useState(null);
   const [showApplyModal, setShowApplyModal] = useState(false);
+  const [toast, setToast] = useState(null);
+  const [confirmModal, setConfirmModal] = useState(null);
   const navigate = useNavigate();
   const user = JSON.parse(localStorage.getItem('user') || 'null');
 
@@ -53,29 +57,45 @@ export default function ClientDashboard() {
   };
 
   const hire = async (jobId, freelancerId) => {
-    if (!confirm('Are you sure you want to hire this freelancer?')) return;
-    
-    try {
-      const response = await API.post(`/jobs/${jobId}/hire`, { freelancerId });
-      alert('Freelancer hired successfully!');
-      fetchData();
-    } catch (err) {
-      console.error('Hire error:', err);
-      alert(err.response?.data?.message || 'Failed to hire freelancer');
-    }
+    setConfirmModal({
+      title: 'Confirm Hire',
+      message: 'Are you sure you want to hire this freelancer?',
+      isDangerous: false,
+      onConfirm: async () => {
+        try {
+          const response = await API.post(`/jobs/${jobId}/hire`, { freelancerId });
+          setToast({ message: 'Freelancer hired successfully!', type: 'success' });
+          setConfirmModal(null);
+          fetchData();
+        } catch (err) {
+          console.error('Hire error:', err);
+          setToast({ message: err.response?.data?.message || 'Failed to hire freelancer', type: 'error' });
+          setConfirmModal(null);
+        }
+      },
+      onCancel: () => setConfirmModal(null)
+    });
   };
 
   const unhire = async (jobId) => {
-    if (!confirm('Are you sure you want to unhire this freelancer? This will cancel the order.')) return;
-    
-    try {
-      const response = await API.post(`/jobs/${jobId}/unhire`);
-      alert('Freelancer unhired successfully!');
-      fetchData();
-    } catch (err) {
-      console.error('Unhire error:', err);
-      alert(err.response?.data?.message || 'Failed to unhire freelancer');
-    }
+    setConfirmModal({
+      title: 'Confirm Unhire',
+      message: 'Are you sure you want to unhire this freelancer? This will cancel the order.',
+      isDangerous: true,
+      onConfirm: async () => {
+        try {
+          const response = await API.post(`/jobs/${jobId}/unhire`);
+          setToast({ message: 'Freelancer unhired successfully!', type: 'success' });
+          setConfirmModal(null);
+          fetchData();
+        } catch (err) {
+          console.error('Unhire error:', err);
+          setToast({ message: err.response?.data?.message || 'Failed to unhire freelancer', type: 'error' });
+          setConfirmModal(null);
+        }
+      },
+      onCancel: () => setConfirmModal(null)
+    });
   };
 
   const openChat = async (freelancerId, otherUser) => {
@@ -106,6 +126,26 @@ export default function ClientDashboard() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 py-8">
+      {/* Toast Notification */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
+
+      {/* Confirmation Modal */}
+      {confirmModal && (
+        <ConfirmationModal
+          title={confirmModal.title}
+          message={confirmModal.message}
+          isDangerous={confirmModal.isDangerous}
+          onConfirm={confirmModal.onConfirm}
+          onCancel={confirmModal.onCancel}
+        />
+      )}
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
         {/* Header */}

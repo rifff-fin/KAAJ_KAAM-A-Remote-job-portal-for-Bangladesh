@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import API from '../api';
 import { useNavigate } from 'react-router-dom';
+import Toast from './Toast';
 
 export default function PostJob() {
   const [form, setForm] = useState({
@@ -12,6 +13,7 @@ export default function PostJob() {
     skills: ''
   });
   const [loading, setLoading] = useState(false);
+  const [toast, setToast] = useState(null);
   const navigate = useNavigate();
   const user = JSON.parse(localStorage.getItem('user') || 'null');
 
@@ -20,15 +22,15 @@ export default function PostJob() {
     if (!user) {
       navigate('/login');
     } else if (user.role !== 'buyer') {
-      alert('Only clients can post jobs');
-      navigate('/');
+      setToast({ message: 'Only clients can post jobs', type: 'error' });
+      setTimeout(() => navigate('/'), 2000);
     }
   }, [user, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.title || !form.description || !form.budget || !form.deadline) {
-      alert('All fields are required');
+      setToast({ message: 'All fields are required', type: 'error' });
       return;
     }
 
@@ -44,11 +46,11 @@ export default function PostJob() {
       };
 
       await API.post('/jobs', payload);
-      alert('Job posted successfully!');
-      navigate('/client-dashboard');
+      setToast({ message: 'Job posted successfully!', type: 'success' });
+      setTimeout(() => navigate('/client-dashboard'), 2000);
     } catch (err) {
       console.error(err);
-      alert(err.response?.data?.msg || 'Failed to post job');
+      setToast({ message: err.response?.data?.msg || 'Failed to post job', type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -56,6 +58,7 @@ export default function PostJob() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-sky-100 flex justify-center py-10 px-4">
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       <div className="bg-white rounded-2xl shadow-xl p-10 w-full max-w-2xl">
         <h1 className="text-3xl font-bold text-gray-800 text-center mb-1">Post a New Job</h1>
         <p className="text-center text-gray-500 mb-8">Hire top freelancers for your project</p>

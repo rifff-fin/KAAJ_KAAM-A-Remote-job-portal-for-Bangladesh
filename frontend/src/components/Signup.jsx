@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import API from '../api';
 import { setAuthData } from '../utils/auth';
+import Toast from './Toast';
 
 export default function Signup() {
   const [form, setForm] = useState({
@@ -11,6 +12,7 @@ export default function Signup() {
 
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
+  const [toast, setToast] = useState(null);
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
@@ -46,10 +48,10 @@ export default function Signup() {
 
       setAuthData(res.data.token, res.data.user);
 
-      alert(`Welcome, ${res.data.user.name}!`);
-      navigate("/");
+      setToast({ message: `Welcome, ${res.data.user.name}!`, type: 'success' });
+      setTimeout(() => navigate("/"), 2000);
     } catch (err) {
-      alert(err.response?.data?.message || "Signup failed");
+      setToast({ message: err.response?.data?.message || "Signup failed", type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -57,6 +59,7 @@ export default function Signup() {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       <div className="w-full max-w-2xl bg-white rounded-2xl shadow-xl p-8">
 
         {/* ROLE SELECTION */}

@@ -11,6 +11,8 @@ import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, R
 import API from '../api';
 import StatCard from './StatCard';
 import ReviewCard from './ReviewCard';
+import Toast from './Toast';
+import ConfirmationModal from './ConfirmationModal';
 import { formatCurrency, formatDate, formatRating } from '../utils/formatters';
 
 export default function Profile() {
@@ -28,6 +30,8 @@ export default function Profile() {
   const [uploading, setUploading] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
   const [showShareModal, setShowShareModal] = useState(false);
+  const [toast, setToast] = useState(null);
+  const [confirmModal, setConfirmModal] = useState(null);
   const [showReportModal, setShowReportModal] = useState(false);
   const [reportReason, setReportReason] = useState('');
   const navigate = useNavigate();
@@ -90,8 +94,8 @@ export default function Profile() {
       }
     } catch (err) {
       console.error('Error fetching other user profile:', err);
-      alert('Failed to load profile');
-      navigate('/');
+      setToast({ message: 'Failed to load profile', type: 'error' });
+      setTimeout(() => navigate('/'), 2000);
     } finally {
       setLoading(false);
     }
@@ -133,25 +137,34 @@ export default function Profile() {
       navigate(`/chat/${res.data._id}`);
     } catch (err) {
       console.error('Error creating conversation:', err);
-      alert('Failed to start conversation');
+      setToast({ message: 'Failed to start conversation', type: 'error' });
     }
   };
 
   const handleBlockUser = async () => {
-    if (!confirm('Are you sure you want to block this user?')) return;
-    try {
-      await API.post('/profile/block', { targetUserId: profileUser._id || profileUser.id });
-      alert('User blocked successfully');
-      navigate('/');
-    } catch (err) {
-      console.error('Error blocking user:', err);
-      alert(err.response?.data?.message || 'Failed to block user');
-    }
+    setConfirmModal({
+      title: 'Block User',
+      message: 'Are you sure you want to block this user?',
+      isDangerous: true,
+      onConfirm: async () => {
+        try {
+          await API.post('/profile/block', { targetUserId: profileUser._id || profileUser.id });
+          setToast({ message: 'User blocked successfully', type: 'success' });
+          setConfirmModal(null);
+          setTimeout(() => navigate('/'), 2000);
+        } catch (err) {
+          console.error('Error blocking user:', err);
+          setToast({ message: err.response?.data?.message || 'Failed to block user', type: 'error' });
+          setConfirmModal(null);
+        }
+      },
+      onCancel: () => setConfirmModal(null)
+    });
   };
 
   const handleReportUser = async () => {
     if (!reportReason.trim() || reportReason.trim().length < 10) {
-      alert('Please provide a detailed reason (at least 10 characters)');
+      setToast({ message: 'Please provide a detailed reason (at least 10 characters)', type: 'error' });
       return;
     }
     try {
@@ -159,19 +172,19 @@ export default function Profile() {
         targetUserId: profileUser._id || profileUser.id,
         reason: reportReason.trim()
       });
-      alert('User reported successfully. Our team will review this report.');
+      setToast({ message: 'User reported successfully. Our team will review this report.', type: 'success' });
       setShowReportModal(false);
       setReportReason('');
     } catch (err) {
       console.error('Error reporting user:', err);
-      alert(err.response?.data?.message || 'Failed to report user');
+      setToast({ message: err.response?.data?.message || 'Failed to report user', type: 'error' });
     }
   };
 
   const handleShareProfile = () => {
     const profileUrl = `${window.location.origin}/profile/${profileUser._id || profileUser.id}`;
     navigator.clipboard.writeText(profileUrl);
-    alert('Profile link copied to clipboard!');
+    setToast({ message: 'Profile link copied to clipboard!', type: 'success' });
     setShowShareModal(false);
   };
 
@@ -193,7 +206,7 @@ export default function Profile() {
           }
         } catch (err) {
           console.error('Avatar upload error:', err);
-          alert('Failed to upload avatar: ' + (err.response?.data?.message || err.message));
+          setToast({ message: 'Failed to upload avatar: ' + (err.response?.data?.message || err.message), type: 'error' });
         }
       }
 
@@ -245,11 +258,11 @@ export default function Profile() {
         
         setEditMode(false);
         setForm({});
-        alert('Profile updated successfully!');
+        setToast({ message: 'Profile updated successfully!', type: 'success' });
       }
     } catch (err) {
       console.error('Update error:', err);
-      alert(err.response?.data?.message || 'Update failed');
+      setToast({ message: err.response?.data?.message || 'Update failed', type: 'error' });
     } finally {
       setUploading(false);
     }
@@ -321,6 +334,26 @@ export default function Profile() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 py-8">
+      {/* Toast Notification */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
+
+      {/* Confirmation Modal */}
+      {confirmModal && (
+        <ConfirmationModal
+          title={confirmModal.title}
+          message={confirmModal.message}
+          isDangerous={confirmModal.isDangerous}
+          onConfirm={confirmModal.onConfirm}
+          onCancel={confirmModal.onCancel}
+        />
+      )}
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Profile Header */}

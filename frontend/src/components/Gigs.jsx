@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Briefcase, Search, Filter, Eye, TrendingUp, Star, User } from 'lucide-react';
 import API from '../api';
+import Toast from './Toast';
 import { formatCurrency } from '../utils/formatters';
 
 export default function Gigs() {
@@ -11,6 +12,7 @@ export default function Gigs() {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [loading, setLoading] = useState(true);
   const [showAll, setShowAll] = useState(false);
+  const [toast, setToast] = useState(null);
   const navigate = useNavigate();
   const user = JSON.parse(localStorage.getItem('user') || 'null');
 
@@ -70,12 +72,12 @@ export default function Gigs() {
 
   const handleCreateGig = () => {
     if (!user) {
-      alert('Please sign in to create a gig');
-      navigate('/login');
+      setToast({ message: 'Please sign in to create a gig', type: 'error' });
+      setTimeout(() => navigate('/login'), 2000);
       return;
     }
     if (user.role !== 'seller') {
-      alert('Only sellers can create gigs. Please sign up as a seller.');
+      setToast({ message: 'Only sellers can create gigs. Please sign up as a seller.', type: 'error' });
       return;
     }
     navigate('/create-gig');
@@ -83,6 +85,15 @@ export default function Gigs() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 py-8">
+      {/* Toast Notification */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Header */}

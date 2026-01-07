@@ -16,6 +16,7 @@ import { socket } from "../socket";
 import API from "../api";
 import { AUTH_CHANGE_EVENT, getUser, clearAuthData } from "../utils/auth";
 import UpcomingMeetingsPanel from "./UpcomingMeetingsPanel";
+import Toast from "./Toast";
 
 export default function Navbar() {
   const navigate = useNavigate();
@@ -32,6 +33,7 @@ export default function Navbar() {
   const [notificationCount, setNotificationCount] = useState(0);
   const [meetingsOpen, setMeetingsOpen] = useState(false);
   const [upcomingMeetingsCount, setUpcomingMeetingsCount] = useState(0);
+  const [toast, setToast] = useState(null);
   const userMenuRef = useRef(null);
   const notifRef = useRef(null);
   const messagesRef = useRef(null);
@@ -216,7 +218,7 @@ export default function Navbar() {
       }
     } catch (err) {
       console.error("Error accepting call:", err);
-      alert("Failed to accept call. Please try again.");
+      setToast({ message: "Failed to accept call. Please try again.", type: 'error' });
     }
   };
 
@@ -243,7 +245,17 @@ export default function Navbar() {
   }, [incomingCall]);
 
   return (
-    <nav className="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
+    <>
+      {/* Toast Notification */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
+      
+      <nav className="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
@@ -799,5 +811,6 @@ export default function Navbar() {
         </div>
       )}
     </nav>
+    </>
   );
 }
