@@ -9,6 +9,7 @@ import {
 import { motion } from "framer-motion";
 import hero from "../assets/hero-illustration.png";
 import { AUTH_CHANGE_EVENT, getUser } from "../utils/auth";
+import SearchBar from "./SearchBar";
 
 export default function Home() {
   const [user, setUser] = useState(getUser());
@@ -118,16 +119,8 @@ export default function Home() {
             </p>
 
             {/* Search Bar */}
-            <div className="bg-white rounded-full shadow-lg p-2 flex items-center gap-2 mb-8 max-w-lg">
-              <Search className="w-5 h-5 text-gray-400 ml-3" />
-              <input
-                type="text"
-                placeholder="Search for services..."
-                className="flex-1 px-2 py-2 outline-none text-gray-700"
-              />
-              <button className="bg-blue-600 text-white px-6 py-2 rounded-full hover:bg-blue-700 transition font-medium">
-                Search
-              </button>
+            <div className="mb-8 max-w-lg">
+              <SearchBar placeholder="Search for services, freelancers, jobs..." />
             </div>
 
             {!user ? (

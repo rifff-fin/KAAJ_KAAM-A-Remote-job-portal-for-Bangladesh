@@ -17,6 +17,7 @@ import API from "../api";
 import { AUTH_CHANGE_EVENT, getUser, clearAuthData } from "../utils/auth";
 import UpcomingMeetingsPanel from "./UpcomingMeetingsPanel";
 import Toast from "./Toast";
+import SearchBar from "./SearchBar";
 import logo from "../assets/kajkamlogo.jpg";
 
 export default function Navbar() {
@@ -258,9 +259,9 @@ export default function Navbar() {
       
       <nav className="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
+        <div className="flex justify-between items-center h-16 gap-4">
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-2 group">
+          <Link to="/" className="flex items-center gap-2 group flex-shrink-0">
             {/* Logo Icon */}
             <img
               src={logo}
@@ -269,32 +270,33 @@ export default function Navbar() {
             />
 
             {/* Logo Text */}
-            <div className="flex items-center text-3xl font-bold leading-none">
+            <div className="hidden lg:flex items-center text-3xl font-bold leading-none">
               <span className="text-black">KAAJ</span>
               <span className="text-blue-600">_KAAM</span>
             </div>
           </Link>
 
+          {/* Search Bar - Desktop */}
+          <div className="hidden md:block flex-1 max-w-xl">
+            <SearchBar placeholder="Search users, gigs, jobs..." />
+          </div>
+
           {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center gap-6">
-            <Link
-              to="/"
-              className="text-gray-700 hover:text-blue-600 font-medium transition"
-            >
-              Home
-            </Link>
-            <Link
-              to="/gigs"
-              className="text-gray-700 hover:text-blue-600 font-medium transition"
-            >
-              Gigs
-            </Link>
+          <div className="hidden md:flex items-center gap-6 flex-shrink-0">
             <Link
               to="/feed"
               className="text-gray-700 hover:text-blue-600 font-medium transition"
             >
               Feed
             </Link>
+            <Link
+              to="/"
+              className="text-gray-700 hover:text-blue-600 font-medium transition"
+            >
+
+              Gigs
+            </Link>
+
 
             {user?.role === "seller" && (
               <>
@@ -681,6 +683,11 @@ export default function Navbar() {
       {mobileOpen && (
         <div className="md:hidden border-t border-gray-200 bg-white">
           <div className="px-4 py-3 space-y-2">
+            {/* Mobile Search */}
+            <div className="mb-3">
+              <SearchBar placeholder="Search..." />
+            </div>
+
             <Link
               to="/"
               className="block px-3 py-2 text-gray-700 hover:bg-gray-50 rounded-lg transition"

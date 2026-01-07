@@ -17,6 +17,7 @@ import Profile from './components/Profile';
 import ClientDashboard from './components/ClientDashboard';
 import MessageManager from './components/MessageManager';
 import Feed from './components/Feed';
+import SearchResults from './components/SearchResults';
 
 import './App.css';
 import './index.css';
@@ -44,6 +45,7 @@ function App() {
         <Route path="/profile" element={<Profile />} />
         <Route path="/profile/:userId" element={<Profile />} />
         <Route path="/feed" element={<Feed />} />
+        <Route path="/search" element={<SearchResults />} />
       </Routes>
     </Router>
   );

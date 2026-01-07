@@ -46,6 +46,7 @@ app.use('/api/reviews', require('./routes/review'));
 app.use('/api/notifications', require('./routes/notification'));
 app.use('/api/meetings', require('./routes/meeting'));
 app.use('/api/feed', require('./routes/feed'));
+app.use('/api/search', require('./routes/search'));
 
 // Error handling middleware
 app.use((err, req, res, next) => {
