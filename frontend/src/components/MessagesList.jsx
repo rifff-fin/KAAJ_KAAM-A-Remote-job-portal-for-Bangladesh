@@ -18,8 +18,18 @@ export default function MessagesList() {
   const user = JSON.parse(localStorage.getItem('user') || 'null');
 
   useEffect(() => {
-    if (!user || !user.id) {
-      console.log('No user found in MessagesList, redirecting to login');
+    // Check if we have a valid user with an ID
+    const currentUser = JSON.parse(localStorage.getItem('user') || 'null');
+    const token = localStorage.getItem('token');
+    
+    console.log('MessagesList - User check:', { 
+      hasUser: !!currentUser, 
+      hasToken: !!token, 
+      userId: currentUser?.id 
+    });
+    
+    if (!currentUser || !currentUser.id || !token) {
+      console.log('No valid user found in MessagesList, redirecting to login');
       navigate('/login');
       return;
     }

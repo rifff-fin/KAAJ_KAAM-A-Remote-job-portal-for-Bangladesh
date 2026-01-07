@@ -19,17 +19,21 @@ const getUserId = () => {
 export const socket = io(SOCKET_URL, {
   autoConnect: false,
   withCredentials: true,
-  query: () => ({
-    userId: getUserId()
-  })
+  transports: ['websocket', 'polling'],
+  query: () => {
+    const userId = getUserId();
+    console.log('Socket connecting with userId:', userId);
+    return { userId };
+  }
 });
 
 socket.on('connect', () => {
   const userId = getUserId();
-  console.log('Connected to server:', socket.id, 'User:', userId);
+  console.log('✓ Connected to server:', socket.id, 'User:', userId);
   
   // Emit user online status
   if (userId) {
+    console.log('Emitting user_online for:', userId);
     socket.emit('user_online', userId);
   }
 });
@@ -48,9 +52,14 @@ socket.on('error', (error) => {
 
 // Reconnection handling
 socket.on('reconnect', (attemptNumber) => {
-  console.log('Reconnected to server after', attemptNumber, 'attempts');
+  console.log('✓ Reconnected to server after', attemptNumber, 'attempts');
   const userId = getUserId();
   if (userId) {
+    console.log('Re-emitting user_online for:', userId);
     socket.emit('user_online', userId);
   }
+});
+
+socket.on('connect_timeout', () => {
+  console.error('✗ Socket connection timeout');
 });

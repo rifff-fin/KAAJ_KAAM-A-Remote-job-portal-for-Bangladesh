@@ -10,18 +10,34 @@ const getOrCreateConversation = async (req, res) => {
     const { participantId, orderId, gigId, jobId } = req.body;
     const userId = req.user.id;
 
+    console.log('Creating conversation:', {
+      userId,
+      participantId,
+      orderId,
+      gigId,
+      jobId
+    });
+
     // Validate participants
     if (!participantId) {
       return res.status(400).json({ message: 'Participant ID required' });
     }
 
-    // Check if conversation already exists
+    // Check if user is trying to message themselves
+    if (userId === participantId) {
+      return res.status(400).json({ message: 'Cannot create conversation with yourself' });
+    }
+
+    // Verify participant exists
+    const participant = await User.findById(participantId);
+    if (!participant) {
+      return res.status(404).json({ message: 'Participant not found' });
+    }
+
+    // Check if conversation already exists (regardless of order/gig/job)
     let conversation = await Conversation.findOne({
-      participants: { $all: [userId, participantId] },
-      ...(orderId && { orderId }),
-      ...(gigId && { gigId }),
-      ...(jobId && { jobId })
-    }).populate('participants', 'name email profile.avatar');
+      participants: { $all: [userId, participantId] }
+    }).populate('participants', 'name email profile.avatar rating');
 
     if (!conversation) {
       // Create new conversation
@@ -32,7 +48,10 @@ const getOrCreateConversation = async (req, res) => {
         ...(jobId && { jobId })
       });
 
-      conversation = await conversation.populate('participants', 'name email profile.avatar');
+      conversation = await conversation.populate('participants', 'name email profile.avatar rating');
+      console.log('Created new conversation:', conversation._id);
+    } else {
+      console.log('Found existing conversation:', conversation._id);
     }
 
     res.json(conversation);
@@ -54,7 +73,7 @@ const getConversations = async (req, res) => {
       participants: userId,
       isActive: true
     })
-      .populate('participants', 'name email profile.avatar')
+      .populate('participants', 'name email profile.avatar rating')
       .populate('lastMessage.sender', 'name profile.avatar')
       .sort({ updatedAt: -1 })
       .limit(parseInt(limit))
@@ -86,7 +105,7 @@ const getConversationById = async (req, res) => {
     const userId = req.user.id;
 
     const conversation = await Conversation.findById(conversationId)
-      .populate('participants', 'name email profile.avatar')
+      .populate('participants', 'name email profile.avatar rating')
       .populate('lastMessage.sender', 'name profile.avatar');
 
     if (!conversation) {

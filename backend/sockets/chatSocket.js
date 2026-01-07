@@ -7,13 +7,21 @@ module.exports = (io) => {
   // Store io instance globally for use in controllers
   global.io = io;
   
+  // Track online users
+  const onlineUsers = new Map();
+  
   io.on('connection', (socket) => {
     console.log('User connected:', socket.id);
 
     const userId = socket.handshake.query.userId;
     if (userId && userId !== 'undefined' && userId !== 'null') {
+      socket.userId = userId;
       socket.join(`user_${userId}`);
-      console.log(`User ${userId} joined personal room`);
+      
+      // Track online user
+      onlineUsers.set(userId, socket.id);
+      
+      console.log(`User ${userId} joined personal room, total online: ${onlineUsers.size}`);
       
       // Broadcast user online status
       socket.broadcast.emit('user_online', { userId });
@@ -25,7 +33,9 @@ module.exports = (io) => {
     socket.on('user_online', (id) => {
       const userIdToUse = id || userId;
       if (userIdToUse && userIdToUse !== 'undefined' && userIdToUse !== 'null') {
+        socket.userId = userIdToUse;
         socket.join(`user_${userIdToUse}`);
+        onlineUsers.set(userIdToUse, socket.id);
         socket.broadcast.emit('user_online', { userId: userIdToUse });
         console.log(`User ${userIdToUse} is now online`);
       }
@@ -38,12 +48,12 @@ module.exports = (io) => {
         return;
       }
       socket.join(`conversation_${conversationId}`);
-      console.log(`User ${userId || 'unknown'} joined conversation: ${conversationId}`);
+      console.log(`User ${socket.userId || 'unknown'} joined conversation: ${conversationId}`);
       
       // Notify others that user is online
-      if (userId) {
+      if (socket.userId) {
         socket.to(`conversation_${conversationId}`).emit('user_online', {
-          userId,
+          userId: socket.userId,
           timestamp: new Date()
         });
       }
@@ -105,13 +115,29 @@ module.exports = (io) => {
     // Initiate call
     socket.on('call:initiate', ({ conversationId, callType, offer, from, to }) => {
       console.log(`Call initiated: ${callType} from ${from} to ${to}`);
+      console.log(`Sending to room: user_${to}`);
+      console.log(`Online users:`, Array.from(onlineUsers.keys()));
+      console.log(`Is user ${to} online?`, onlineUsers.has(to));
+      
+      // Send to specific user
       io.to(`user_${to}`).emit('call:incoming', {
         conversationId,
         callType,
         offer,
         from,
-        fromUser: userId
+        fromUser: socket.userId || from
       });
+      
+      // Also emit to conversation room as backup
+      socket.to(`conversation_${conversationId}`).emit('call:incoming', {
+        conversationId,
+        callType,
+        offer,
+        from,
+        fromUser: socket.userId || from
+      });
+      
+      console.log(`Call emitted to user ${to} and conversation ${conversationId}`);
     });
 
     // Accept call
@@ -121,18 +147,33 @@ module.exports = (io) => {
         conversationId,
         answer
       });
+      // Also emit to conversation room
+      socket.to(`conversation_${conversationId}`).emit('call:accepted', {
+        conversationId,
+        answer
+      });
     });
 
     // Reject call
     socket.on('call:reject', ({ conversationId, to }) => {
+      console.log('Call rejected, notifying:', to);
       io.to(`user_${to}`).emit('call:rejected', {
+        conversationId
+      });
+      // Also emit to conversation room
+      socket.to(`conversation_${conversationId}`).emit('call:rejected', {
         conversationId
       });
     });
 
     // End call
     socket.on('call:end', ({ conversationId, to }) => {
+      console.log('Call ended, notifying:', to);
       io.to(`user_${to}`).emit('call:ended', {
+        conversationId
+      });
+      // Also emit to conversation room
+      socket.to(`conversation_${conversationId}`).emit('call:ended', {
         conversationId
       });
     });
@@ -141,28 +182,28 @@ module.exports = (io) => {
     socket.on('webrtc:offer', ({ conversationId, offer, to }) => {
       console.log('Relaying WebRTC offer to:', to);
       if (to) {
-        io.to(`user_${to}`).emit('webrtc:offer', { offer, conversationId });
-      } else {
-        socket.to(`conversation_${conversationId}`).emit('webrtc:offer', { offer });
+        io.to(`user_${to}`).emit('webrtc:offer', { offer, conversationId, from: socket.userId });
       }
+      // Also emit to conversation room
+      socket.to(`conversation_${conversationId}`).emit('webrtc:offer', { offer, from: socket.userId });
     });
 
     socket.on('webrtc:answer', ({ conversationId, answer, to }) => {
       console.log('Relaying WebRTC answer to:', to);
       if (to) {
-        io.to(`user_${to}`).emit('webrtc:answer', { answer, conversationId });
-      } else {
-        socket.to(`conversation_${conversationId}`).emit('webrtc:answer', { answer });
+        io.to(`user_${to}`).emit('webrtc:answer', { answer, conversationId, from: socket.userId });
       }
+      // Also emit to conversation room
+      socket.to(`conversation_${conversationId}`).emit('webrtc:answer', { answer, from: socket.userId });
     });
 
     socket.on('webrtc:ice-candidate', ({ conversationId, candidate, to }) => {
       console.log('Relaying ICE candidate to:', to);
       if (to) {
-        io.to(`user_${to}`).emit('webrtc:ice-candidate', { candidate, conversationId });
-      } else {
-        socket.to(`conversation_${conversationId}`).emit('webrtc:ice-candidate', { candidate });
+        io.to(`user_${to}`).emit('webrtc:ice-candidate', { candidate, conversationId, from: socket.userId });
       }
+      // Also emit to conversation room
+      socket.to(`conversation_${conversationId}`).emit('webrtc:ice-candidate', { candidate, from: socket.userId });
     });
 
     // ────── Meeting Events ──────
@@ -197,7 +238,11 @@ module.exports = (io) => {
 
     socket.on('disconnect', () => {
       console.log('User disconnected:', socket.id);
-      socket.broadcast.emit('user_offline', { userId });
+      if (socket.userId) {
+        onlineUsers.delete(socket.userId);
+        socket.broadcast.emit('user_offline', { userId: socket.userId });
+        console.log(`User ${socket.userId} offline, total online: ${onlineUsers.size}`);
+      }
     });
   });
 };

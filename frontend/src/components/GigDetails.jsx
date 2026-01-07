@@ -8,7 +8,20 @@ export default function GigDetails() {
   const [gig, setGig] = useState(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
-  const user = JSON.parse(localStorage.getItem('user') || 'null');
+  
+  // Get user with proper error handling
+  const getUserFromStorage = () => {
+    try {
+      const userStr = localStorage.getItem('user');
+      if (!userStr || userStr === 'null') return null;
+      return JSON.parse(userStr);
+    } catch (error) {
+      console.error('Error parsing user from localStorage:', error);
+      return null;
+    }
+  };
+  
+  const user = getUserFromStorage();
 
   useEffect(() => {
     const fetchGigData = async () => {
@@ -16,31 +29,53 @@ export default function GigDetails() {
         const gigRes = await API.get(`/gigs/${id}`);
         const gigData = gigRes.data;
         
-        // Fetch fresh seller data to get updated rating
-        if (gigData.seller?._id) {
+        console.log('Fetched gig data:', {
+          gigId: gigData._id,
+          title: gigData.title,
+          seller: gigData.seller,
+          sellerId: gigData.seller?._id,
+          sellerName: gigData.seller?.name
+        });
+        
+        // Validate seller data exists
+        if (!gigData.seller) {
+          console.error('Gig seller data is missing!');
+          alert('This gig has invalid seller information.');
+          navigate('/gigs');
+          return;
+        }
+        
+        if (!gigData.seller._id) {
+          console.error('Gig seller ID is missing!', gigData.seller);
+          alert('This gig has invalid seller information.');
+          navigate('/gigs');
+          return;
+        }
+        
+        // Fetch fresh seller data to get updated rating (optional enhancement)
+        if (gigData.seller._id) {
           try {
             const sellerRes = await API.get(`/profile/${gigData.seller._id}`);
-            if (sellerRes.data.user) {
-              // Update gig with fresh seller data including rating
-              gigData.seller = sellerRes.data.user;
+            if (sellerRes.data.user && sellerRes.data.user._id) {
+              // Only merge rating if available, keep original seller data intact
+              gigData.seller = {
+                ...gigData.seller,
+                rating: sellerRes.data.user.rating || gigData.seller.rating,
+                profile: sellerRes.data.user.profile || gigData.seller.profile
+              };
             }
           } catch (err) {
-            console.error('Error fetching seller profile:', err);
-            // Continue with gig data even if seller fetch fails
+            console.error('Error fetching seller profile (non-critical):', err);
+            // Continue with original gig seller data
           }
         }
         
-        console.log('Gig seller ID:', gigData.seller?._id);
-        console.log('Current user ID:', user?.id, 'or', user?._id);
-        console.log('User role:', user?.role);
-        console.log('Are they equal (user.id === seller._id)?', user?.id === gigData.seller?._id);
-        console.log('Are they equal (user._id === seller._id)?', user?._id === gigData.seller?._id);
-        console.log('Full seller object:', gigData.seller);
-        console.log('Full user object:', user);
+        console.log('Final seller data:', gigData.seller);
         setGig(gigData);
       } catch (err) {
+        console.error('Error fetching gig:', err);
         alert('Gig not found');
-        navigate('/');
+        navigate('/gigs');
       } finally {
         setLoading(false);
       }
@@ -56,12 +91,64 @@ export default function GigDetails() {
       return;
     }
 
+    // Get user ID safely
+    const currentUserId = user.id || user._id;
+    const sellerId = gig?.seller?._id;
+    
+    console.log('Contact seller button clicked:', {
+      gigExists: !!gig,
+      gigId: gig?._id,
+      gigTitle: gig?.title,
+      sellerExists: !!gig?.seller,
+      sellerObject: gig?.seller,
+      sellerId: sellerId,
+      currentUserId: currentUserId,
+      fullGigData: gig
+    });
+
+    // Validate IDs exist
+    if (!currentUserId) {
+      console.error('Current user ID is missing!', { user });
+      alert('Authentication error. Please log in again.');
+      navigate('/login');
+      return;
+    }
+
+    if (!gig) {
+      console.error('Gig data is not loaded yet!');
+      alert('Please wait for the page to load completely.');
+      return;
+    }
+
+    if (!gig.seller) {
+      console.error('Gig seller data is missing!', { gig });
+      alert('Seller information is not available. The gig may be deleted or invalid.');
+      return;
+    }
+
+    if (!sellerId) {
+      console.error('Seller ID is missing from seller object!', { seller: gig.seller });
+      alert('Seller ID is not available. Please refresh the page.');
+      return;
+    }
+
+    // Check if user is trying to message themselves
+    if (String(currentUserId) === String(sellerId)) {
+      alert('You cannot message yourself');
+      return;
+    }
+
     try {
+      console.log('Creating conversation with seller:', sellerId);
+      
       // Create or get conversation with seller
       const response = await API.post('/chat/conversations', {
-        participantId: gig.seller._id,
+        participantId: sellerId,
         gigId: gig._id
       });
+      
+      console.log('Conversation created/retrieved:', response.data);
+      
       const conversationId = response.data._id;
       const otherUser = gig.seller;
 
@@ -74,7 +161,9 @@ export default function GigDetails() {
       }
     } catch (err) {
       console.error('Error creating conversation:', err);
-      alert('Failed to start conversation');
+      console.error('Error response:', err.response?.data);
+      const errorMsg = err.response?.data?.message || 'Failed to start conversation';
+      alert(errorMsg);
     }
   };
 
