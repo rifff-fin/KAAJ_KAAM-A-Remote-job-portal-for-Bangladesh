@@ -16,4 +16,19 @@ const protect = (req, res, next) => {
   }
 };
 
-module.exports = { protect };
+// Optional authentication - doesn't fail if no token
+const optionalAuth = (req, res, next) => {
+  const token = req.header('x-auth-token');
+  if (token) {
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'kajkam-secret-2025');
+      req.user = decoded; // { id, role }
+    } catch (err) {
+      // Invalid token, but continue without user
+      req.user = null;
+    }
+  }
+  next();
+};
+
+module.exports = { protect, optionalAuth };

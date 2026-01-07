@@ -544,6 +544,137 @@ const reportUser = async (req, res) => {
   }
 };
 
+// Follow a user
+const followUser = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { targetUserId } = req.params;
+
+    if (userId === targetUserId) {
+      return res.status(400).json({ message: 'You cannot follow yourself' });
+    }
+
+    const user = await User.findById(userId);
+    const targetUser = await User.findById(targetUserId);
+
+    if (!targetUser) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Check if already following
+    const alreadyFollowing = user.following.includes(targetUserId);
+
+    if (alreadyFollowing) {
+      return res.status(400).json({ message: 'You are already following this user' });
+    }
+
+    // Add to following and followers
+    user.following.push(targetUserId);
+    targetUser.followers.push(userId);
+
+    await user.save();
+    await targetUser.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'User followed successfully',
+      followingCount: user.following.length,
+      followersCount: targetUser.followers.length
+    });
+  } catch (error) {
+    console.error('Follow user error:', error);
+    res.status(500).json({ message: 'Error following user', error: error.message });
+  }
+};
+
+// Unfollow a user
+const unfollowUser = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { targetUserId } = req.params;
+
+    if (userId === targetUserId) {
+      return res.status(400).json({ message: 'Invalid operation' });
+    }
+
+    const user = await User.findById(userId);
+    const targetUser = await User.findById(targetUserId);
+
+    if (!targetUser) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Check if following
+    const followingIndex = user.following.indexOf(targetUserId);
+    const followerIndex = targetUser.followers.indexOf(userId);
+
+    if (followingIndex === -1) {
+      return res.status(400).json({ message: 'You are not following this user' });
+    }
+
+    // Remove from following and followers
+    user.following.splice(followingIndex, 1);
+    if (followerIndex !== -1) {
+      targetUser.followers.splice(followerIndex, 1);
+    }
+
+    await user.save();
+    await targetUser.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'User unfollowed successfully',
+      followingCount: user.following.length,
+      followersCount: targetUser.followers.length
+    });
+  } catch (error) {
+    console.error('Unfollow user error:', error);
+    res.status(500).json({ message: 'Error unfollowing user', error: error.message });
+  }
+};
+
+// Get user's followers
+const getFollowers = async (req, res) => {
+  try {
+    const userId = req.params.userId || req.user.id;
+    const user = await User.findById(userId).populate('followers', 'name email profile.avatar profile.bio');
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.status(200).json({
+      success: true,
+      followers: user.followers,
+      count: user.followers.length
+    });
+  } catch (error) {
+    console.error('Get followers error:', error);
+    res.status(500).json({ message: 'Error fetching followers', error: error.message });
+  }
+};
+
+// Get user's following
+const getFollowing = async (req, res) => {
+  try {
+    const userId = req.params.userId || req.user.id;
+    const user = await User.findById(userId).populate('following', 'name email profile.avatar profile.bio');
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.status(200).json({
+      success: true,
+      following: user.following,
+      count: user.following.length
+    });
+  } catch (error) {
+    console.error('Get following error:', error);
+    res.status(500).json({ message: 'Error fetching following', error: error.message });
+  }
+};
+
 module.exports = {
   getProfile,
   updateProfile,
@@ -555,5 +686,9 @@ module.exports = {
   updateUserStats,
   blockUser,
   unblockUser,
-  reportUser
+  reportUser,
+  followUser,
+  unfollowUser,
+  getFollowers,
+  getFollowing
 };
