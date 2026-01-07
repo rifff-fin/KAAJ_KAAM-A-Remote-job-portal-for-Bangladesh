@@ -3,10 +3,14 @@ import React, { useState, useEffect } from 'react';
 import { Calendar, Clock, Video, Phone, Check, X, Play, FileText } from 'lucide-react';
 import { formatDistanceToNow, format, isPast, differenceInMinutes } from 'date-fns';
 import API from '../api';
+import Toast from './Toast';
 
 export default function MeetingCard({ meeting, onUpdate, showActions = true, onStartMeeting }) {
   const [loading, setLoading] = useState(false);
   const [timeUntil, setTimeUntil] = useState('');
+  const [toast, setToast] = useState(null);
+  const [showDeclineModal, setShowDeclineModal] = useState(false);
+  const [declineReason, setDeclineReason] = useState('');
   const user = JSON.parse(localStorage.getItem('user') || 'null');
 
   const scheduledDate = new Date(meeting.scheduledDate);
@@ -40,23 +44,30 @@ export default function MeetingCard({ meeting, onUpdate, showActions = true, onS
     try {
       const response = await API.put(`/meetings/${meeting._id}/accept`);
       onUpdate(response.data);
+      setToast({ message: 'Meeting accepted successfully', type: 'success' });
     } catch (err) {
       console.error('Error accepting meeting:', err);
-      alert(err.response?.data?.message || 'Failed to accept meeting');
+      setToast({ message: err.response?.data?.message || 'Failed to accept meeting', type: 'error' });
     } finally {
       setLoading(false);
     }
   };
 
   const handleDecline = async () => {
-    const reason = prompt('Reason for declining (optional):');
+    setShowDeclineModal(true);
+  };
+
+  const confirmDecline = async () => {
     setLoading(true);
     try {
-      const response = await API.put(`/meetings/${meeting._id}/decline`, { reason });
+      const response = await API.put(`/meetings/${meeting._id}/decline`, { reason: declineReason });
       onUpdate(response.data);
+      setToast({ message: 'Meeting declined successfully', type: 'success' });
+      setShowDeclineModal(false);
+      setDeclineReason('');
     } catch (err) {
       console.error('Error declining meeting:', err);
-      alert(err.response?.data?.message || 'Failed to decline meeting');
+      setToast({ message: err.response?.data?.message || 'Failed to decline meeting', type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -97,7 +108,56 @@ export default function MeetingCard({ meeting, onUpdate, showActions = true, onS
   };
 
   return (
-    <div className="bg-white border-2 border-blue-100 rounded-lg p-4 space-y-3">
+    <div>
+      {/* Toast Notification */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
+
+      {/* Decline Modal */}
+      {showDeclineModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full">
+            <div className="bg-amber-50 border-b border-amber-200 px-6 py-4 rounded-t-2xl">
+              <h2 className="text-xl font-bold text-amber-900">Decline Meeting</h2>
+            </div>
+            <div className="p-6 space-y-4">
+              <p className="text-gray-700">Would you like to provide a reason for declining?</p>
+              <textarea
+                value={declineReason}
+                onChange={(e) => setDeclineReason(e.target.value)}
+                placeholder="Optional reason for declining this meeting..."
+                rows={4}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent resize-none"
+              />
+              <div className="flex gap-3 pt-4">
+                <button
+                  onClick={() => {
+                    setShowDeclineModal(false);
+                    setDeclineReason('');
+                  }}
+                  className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmDecline}
+                  disabled={loading}
+                  className="flex-1 px-4 py-3 bg-amber-600 text-white rounded-lg font-medium hover:bg-amber-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {loading ? 'Declining...' : 'Decline'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="bg-white border-2 border-blue-100 rounded-lg p-4 space-y-3">
       {/* Header */}
       <div className="flex items-start justify-between">
         <div className="flex-1">

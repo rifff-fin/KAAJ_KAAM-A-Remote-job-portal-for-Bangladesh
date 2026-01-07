@@ -3,11 +3,13 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import API from '../api';
 import { setAuthData } from '../utils/auth';
+import Toast from './Toast';
 
 export default function Login() {
   const [form, setForm] = useState({ email: '', password: '' });
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
+  const [toast, setToast] = useState(null);
   const navigate = useNavigate();
 
   // Validation similar to Signup
@@ -38,10 +40,10 @@ export default function Login() {
       // Save token and user
       setAuthData(res.data.token, res.data.user);
 
-      alert(`Welcome back, ${res.data.user.name}!`);
-      navigate('/'); // redirect to dashboard/home
+      setToast({ message: `Welcome back, ${res.data.user.name}!`, type: 'success' });
+      setTimeout(() => navigate('/'), 2000); // redirect to dashboard/home
     } catch (err) {
-      alert(err.response?.data?.message || "Login failed");
+      setToast({ message: err.response?.data?.message || "Login failed", type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -49,6 +51,15 @@ export default function Login() {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-blue-50">
+      {/* Toast Notification */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
+
       <div className="bg-white rounded-2xl p-8 w-full max-w-md shadow-xl">
 
         <h2 className="text-center text-3xl font-bold mb-6">Login</h2>

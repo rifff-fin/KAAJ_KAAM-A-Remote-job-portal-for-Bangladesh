@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import API from '../api';
 import { Link, useNavigate } from 'react-router-dom';
+import ApplyJobModal from './ApplyJobModal';
 
 export default function Jobs() {
   const [jobs, setJobs] = useState([]);
@@ -10,6 +11,7 @@ export default function Jobs() {
   const [loading, setLoading] = useState(true);
   const [applying, setApplying] = useState(null);
   const [showAll, setShowAll] = useState(false);
+  const [selectedJob, setSelectedJob] = useState(null);
 
   const navigate = useNavigate();
   const user = JSON.parse(localStorage.getItem('user') || 'null');
@@ -34,41 +36,33 @@ export default function Jobs() {
   }, [search, category]);
 
   // Apply to job
-  const handleApply = async (jobId, client) => {
+  const handleApply = (job) => {
     if (!user || user.role !== 'seller') {
       alert('Only freelancers can apply');
       return;
     }
+    setSelectedJob(job);
+  };
 
-    setApplying(jobId);
-    const message = prompt('Write your proposal (cover letter):');
-    if (!message?.trim()) {
-      setApplying(null);
-      return;
-    }
-
+  const handleApplySuccess = async () => {
     try {
-      await API.post(`/jobs/${jobId}/interest`, { message });
-
       // Create or get conversation with client
       const response = await API.post('/chat/conversations', {
-        participantId: client._id,
-        jobId: jobId
+        participantId: selectedJob.postedBy._id,
+        jobId: selectedJob._id
       });
 
       const conversationId = response.data._id;
 
       if (window.openMessagePopup) {
-        window.openMessagePopup(conversationId, client);
+        window.openMessagePopup(conversationId, selectedJob.postedBy);
       } else {
         navigate(`/chat/${conversationId}`);
       }
 
-      alert('Applied successfully!');
+      setSelectedJob(null);
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to apply');
-    } finally {
-      setApplying(null);
+      console.error('Error creating conversation:', err);
     }
   };
 
@@ -200,16 +194,16 @@ export default function Jobs() {
                 <div className="mt-4">
                   {user?.role === 'seller' ? (
                     <button
-                      onClick={() => handleApply(job._id, job.postedBy)}
-                      disabled={applying === job._id}
+                      onClick={() => handleApply(job)}
+                      disabled={selectedJob?._id === job._id}
                       className={`w-full py-3 rounded-lg font-semibold text-white
                         transition
-                        ${applying === job._id
+                        ${selectedJob?._id === job._id
                           ? 'bg-emerald-300 cursor-not-allowed'
                           : 'bg-emerald-500 hover:bg-emerald-600'
                         }`}
                     >
-                      {applying === job._id ? 'Applying...' : 'Apply Now'}
+                      {selectedJob?._id === job._id ? 'Opening form...' : 'Apply Now'}
                     </button>
                   ) : user?.role === 'buyer' && job.postedBy._id === user.id ? (
                     <Link
@@ -256,6 +250,15 @@ export default function Jobs() {
               </div>
             )}
           </>
+        )}
+
+        {/* Apply Modal */}
+        {selectedJob && (
+          <ApplyJobModal 
+            job={selectedJob} 
+            onClose={() => setSelectedJob(null)}
+            onSuccess={handleApplySuccess}
+          />
         )}
       </div>
     </div>

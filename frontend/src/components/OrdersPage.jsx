@@ -2,6 +2,8 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import API from '../api';
+import CancelOrderModal from './CancelOrderModal';
+import Toast from './Toast';
 import {
   FiMessageSquare,
   FiCheckCircle,
@@ -18,6 +20,8 @@ export default function OrdersPage() {
   const [userRole, setUserRole] = useState(null);
   const [reviewedOrders, setReviewedOrders] = useState(new Set());
   const [error, setError] = useState('');
+  const [selectedOrderToCancel, setSelectedOrderToCancel] = useState(null);
+  const [toast, setToast] = useState(null);
 
   const user = JSON.parse(localStorage.getItem('user') || 'null');
 
@@ -87,9 +91,11 @@ const fetchReviewedOrders = async () => {
     navigate(`/chat/${conversationId}`);
   };
 
-  const handleStatusUpdate = async (orderId, status) => {
+  const handleStatusUpdate = async (orderId, status, reason = '') => {
     try {
-      await API.put(`/orders/${orderId}/status`, { status });
+      const updateData = { status };
+      if (reason) updateData.cancellationReason = reason;
+      await API.put(`/orders/${orderId}/status`, updateData);
       fetchOrders();
       
       // Refresh user profile to update stats
@@ -102,8 +108,25 @@ const fetchReviewedOrders = async () => {
       } catch (err) {
         console.error('Error refreshing profile:', err);
       }
+
+      setToast({ message: 'Order status updated successfully!', type: 'success' });
     } catch {
-      alert('Failed to update order status');
+      setToast({ message: 'Failed to update order status', type: 'error' });
+    }
+  };
+
+  const handleCancelOrder = async (orderId, reason) => {
+    await handleStatusUpdate(orderId, 'cancelled', reason);
+    setSelectedOrderToCancel(null);
+  };
+
+  const handleConfirmPayment = async (orderId) => {
+    try {
+      await API.put(`/orders/${orderId}/pay`);
+      fetchOrders(); // refresh orders
+      setToast({ message: 'Payment confirmed successfully!', type: 'success' });
+    } catch (error) {
+      setToast({ message: error.response?.data?.message || "Payment failed", type: 'error' });
     }
   };
 
@@ -133,6 +156,15 @@ const fetchReviewedOrders = async () => {
   return (
     <div className="min-h-screen bg-gray-100 p-5">
       <div className="max-w-6xl mx-auto">
+
+        {/* Toast Notification */}
+        {toast && (
+          <Toast
+            message={toast.message}
+            type={toast.type}
+            onClose={() => setToast(null)}
+          />
+        )}
 
         {/* Error Message */}
         {error && (
@@ -301,11 +333,7 @@ const fetchReviewedOrders = async () => {
                       <ActionButton
                         label="Cancel"
                         color="gray"
-                        onClick={() => {
-                          if (window.confirm('Cancel this order?')) {
-                            handleStatusUpdate(order._id, 'cancelled');
-                          }
-                        }}
+                        onClick={() => setSelectedOrderToCancel(order)}
                       />
                     )}
                 </div>
@@ -314,17 +342,19 @@ const fetchReviewedOrders = async () => {
           </div>
         )}
       </div>
+
+      {/* Cancel Order Modal */}
+      {selectedOrderToCancel && (
+        <CancelOrderModal
+          order={selectedOrderToCancel}
+          onClose={() => setSelectedOrderToCancel(null)}
+          onConfirm={handleCancelOrder}
+        />
+      )}
     </div>
   );
 }
-const handleConfirmPayment = async (orderId) => {
-  try {
-    await API.put(`/orders/${orderId}/pay`);
-    fetchOrders(); // refresh orders
-  } catch (error) {
-    alert(error.response?.data?.message || "Payment failed");
-  }
-};
+
 
 /* ------------------ SMALL COMPONENTS ------------------ */
 
