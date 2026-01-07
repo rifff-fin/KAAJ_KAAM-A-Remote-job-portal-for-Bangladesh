@@ -17,7 +17,7 @@ import API from "../api";
 import { AUTH_CHANGE_EVENT, getUser, clearAuthData } from "../utils/auth";
 import UpcomingMeetingsPanel from "./UpcomingMeetingsPanel";
 import Toast from "./Toast";
-import logo from "../assets/kajkamlogo.png";
+import logo from "../assets/kajkamlogo.jpg";
 
 export default function Navbar() {
   const navigate = useNavigate();
