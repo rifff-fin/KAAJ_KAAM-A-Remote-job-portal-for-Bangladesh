@@ -16,6 +16,7 @@ import { socket } from "../socket";
 import API from "../api";
 import { AUTH_CHANGE_EVENT, getUser, clearAuthData } from "../utils/auth";
 import UpcomingMeetingsPanel from "./UpcomingMeetingsPanel";
+import logo from "../assets/kajkamlogo.jpg";
 
 export default function Navbar() {
   const navigate = useNavigate();
@@ -248,10 +249,18 @@ export default function Navbar() {
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2 group">
-            <Briefcase className="w-7 h-7 text-blue-600 group-hover:scale-110 transition-transform" />
-            <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              KAAJ KAAM
-            </span>
+            {/* Logo Icon */}
+            <img
+              src={logo}
+              alt="KAAJ_KAAM Logo"
+              className="h-10 w-10 flex-shrink-0 object-contain group-hover:scale-105 transition-transform"
+            />
+
+            {/* Logo Text */}
+            <div className="flex items-center text-3xl font-bold leading-none">
+              <span className="text-black">KAAJ</span>
+              <span className="text-blue-600">_KAAM</span>
+            </div>
           </Link>
 
           {/* Desktop Navigation */}
