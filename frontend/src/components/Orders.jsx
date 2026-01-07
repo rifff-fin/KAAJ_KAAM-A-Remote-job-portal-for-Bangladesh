@@ -2,6 +2,8 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import API from '../api';
+import CancelOrderModal from './CancelOrderModal';
+import Toast from './Toast';
 import {
   FiMessageSquare,
   FiCheckCircle,
@@ -16,6 +18,8 @@ export default function OrdersPage() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('all');
   const [userRole, setUserRole] = useState(null);
+  const [selectedOrderToCancel, setSelectedOrderToCancel] = useState(null);
+  const [toast, setToast] = useState(null);
 
   const user = JSON.parse(localStorage.getItem('user') || 'null');
 
@@ -60,13 +64,21 @@ export default function OrdersPage() {
     navigate(`/chat/${conversationId}`);
   };
 
-  const handleStatusUpdate = async (orderId, status) => {
+  const handleStatusUpdate = async (orderId, status, reason = '') => {
     try {
-      await API.put(`/orders/${orderId}/status`, { status });
+      const updateData = { status };
+      if (reason) updateData.cancellationReason = reason;
+      await API.put(`/orders/${orderId}/status`, updateData);
       fetchOrders();
+      setToast({ message: 'Order status updated successfully!', type: 'success' });
     } catch {
-      alert('Failed to update order status');
+      setToast({ message: 'Failed to update order status', type: 'error' });
     }
+  };
+
+  const handleCancelOrder = async (orderId, reason) => {
+    await handleStatusUpdate(orderId, 'cancelled', reason);
+    setSelectedOrderToCancel(null);
   };
 
   const statusStyles = {
@@ -96,7 +108,14 @@ export default function OrdersPage() {
     <div className="min-h-screen bg-gray-100 p-5">
       <div className="max-w-6xl mx-auto">
 
-        {/* Header */}
+        {/* Toast Notification */}
+        {toast && (
+          <Toast
+            message={toast.message}
+            type={toast.type}
+            onClose={() => setToast(null)}
+          />
+        )}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-800">My Orders</h1>
           <p className="text-sm text-gray-500">
@@ -220,11 +239,7 @@ export default function OrdersPage() {
                       <ActionButton
                         label="Cancel"
                         color="gray"
-                        onClick={() => {
-                          if (window.confirm('Cancel this order?')) {
-                            handleStatusUpdate(order._id, 'cancelled');
-                          }
-                        }}
+                        onClick={() => setSelectedOrderToCancel(order)}
                       />
                     )}
                 </div>
@@ -233,6 +248,15 @@ export default function OrdersPage() {
           </div>
         )}
       </div>
+
+      {/* Cancel Order Modal */}
+      {selectedOrderToCancel && (
+        <CancelOrderModal
+          order={selectedOrderToCancel}
+          onClose={() => setSelectedOrderToCancel(null)}
+          onConfirm={handleCancelOrder}
+        />
+      )}
     </div>
   );
 }

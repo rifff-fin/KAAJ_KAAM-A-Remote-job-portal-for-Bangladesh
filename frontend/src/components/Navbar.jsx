@@ -17,6 +17,9 @@ import { socket } from "../socket";
 import API from "../api";
 import { AUTH_CHANGE_EVENT, getUser, clearAuthData } from "../utils/auth";
 import UpcomingMeetingsPanel from "./UpcomingMeetingsPanel";
+import Toast from "./Toast";
+import SearchBar from "./SearchBar";
+import logo from "../assets/kajkamlogo.jpg";
 
 export default function Navbar() {
   const navigate = useNavigate();
@@ -33,6 +36,7 @@ export default function Navbar() {
   const [notificationCount, setNotificationCount] = useState(0);
   const [meetingsOpen, setMeetingsOpen] = useState(false);
   const [upcomingMeetingsCount, setUpcomingMeetingsCount] = useState(0);
+  const [toast, setToast] = useState(null);
   const userMenuRef = useRef(null);
   const notifRef = useRef(null);
   const messagesRef = useRef(null);
@@ -217,7 +221,7 @@ export default function Navbar() {
       }
     } catch (err) {
       console.error("Error accepting call:", err);
-      alert("Failed to accept call. Please try again.");
+      setToast({ message: "Failed to accept call. Please try again.", type: 'error' });
     }
   };
 
@@ -244,24 +248,47 @@ export default function Navbar() {
   }, [incomingCall]);
 
   return (
-    <nav className="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
+    <>
+      {/* Toast Notification */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
+      
+      <nav className="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
+        <div className="flex justify-between items-center h-16 gap-4">
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-2 group">
-            <Briefcase className="w-7 h-7 text-blue-600 group-hover:scale-110 transition-transform" />
-            <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              KAAJ KAAM
-            </span>
+          <Link to="/" className="flex items-center gap-2 group flex-shrink-0">
+            {/* Logo Icon */}
+            <img
+              src={logo}
+              alt="KAAJ_KAAM Logo"
+              className="h-10 w-10 flex-shrink-0 object-contain group-hover:scale-105 transition-transform"
+            />
+
+            {/* Logo Text */}
+            <div className="hidden lg:flex items-center text-3xl font-bold leading-none">
+              <span className="text-black">KAAJ</span>
+              <span className="text-blue-600">_KAAM</span>
+            </div>
           </Link>
 
+          {/* Search Bar - Desktop */}
+          <div className="hidden md:block flex-1 max-w-xl">
+            <SearchBar placeholder="Search users, gigs, jobs..." />
+          </div>
+
           {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center gap-6">
+          <div className="hidden md:flex items-center gap-6 flex-shrink-0">
             <Link
-              to="/"
+              to="/feed"
               className="text-gray-700 hover:text-blue-600 font-medium transition"
             >
-              Home
+              Feed
             </Link>
             <Link
               to="/gigs"
@@ -269,6 +296,7 @@ export default function Navbar() {
             >
               Gigs
             </Link>
+
 
             {user?.role === "seller" && (
               <>
@@ -664,6 +692,11 @@ export default function Navbar() {
       {mobileOpen && (
         <div className="md:hidden border-t border-gray-200 bg-white">
           <div className="px-4 py-3 space-y-2">
+            {/* Mobile Search */}
+            <div className="mb-3">
+              <SearchBar placeholder="Search..." />
+            </div>
+
             <Link
               to="/"
               className="block px-3 py-2 text-gray-700 hover:bg-gray-50 rounded-lg transition"
@@ -678,6 +711,14 @@ export default function Navbar() {
               onClick={() => setMobileOpen(false)}
             >
               Gigs
+            </Link>
+
+            <Link
+              to="/feed"
+              className="block px-3 py-2 text-gray-700 hover:bg-gray-50 rounded-lg transition"
+              onClick={() => setMobileOpen(false)}
+            >
+              Feed
             </Link>
 
             {user?.role === "seller" && (
@@ -809,5 +850,6 @@ export default function Navbar() {
         </div>
       )}
     </nav>
+    </>
   );
 }

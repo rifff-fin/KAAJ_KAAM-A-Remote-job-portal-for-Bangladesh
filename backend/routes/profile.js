@@ -12,7 +12,11 @@ const {
   searchSellers,
   blockUser,
   unblockUser,
-  reportUser
+  reportUser,
+  followUser,
+  unfollowUser,
+  getFollowers,
+  getFollowing
 } = require('../controllers/profileController');
 
 // Get current user's profile
@@ -34,6 +38,12 @@ router.put('/buyer', protect, updateBuyerProfile);
 router.post('/block', protect, blockUser);
 router.post('/unblock', protect, unblockUser);
 router.post('/report', protect, reportUser);
+
+// Follow/Unfollow user
+router.post('/follow/:targetUserId', protect, followUser);
+router.post('/unfollow/:targetUserId', protect, unfollowUser);
+router.get('/:userId/followers', getFollowers);
+router.get('/:userId/following', getFollowing);
 
 // Search sellers
 router.get('/sellers/search', searchSellers);

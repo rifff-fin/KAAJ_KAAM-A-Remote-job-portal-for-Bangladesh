@@ -3,6 +3,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { X, Mic, MicOff, Video, VideoOff, PhoneOff, Monitor, MonitorOff } from 'lucide-react';
 import { socket } from '../socket';
 import API from '../api';
+import Toast from './Toast';
 
 export default function VideoCallModal({ 
   conversationId, 
@@ -20,6 +21,7 @@ export default function VideoCallModal({
   const [callStatus, setCallStatus] = useState(isIncoming ? 'incoming' : 'calling');
   const [callDuration, setCallDuration] = useState(0);
   const [isMinimized, setIsMinimized] = useState(false);
+  const [toast, setToast] = useState(null);
 
   const localVideoRef = useRef(null);
   const remoteVideoRef = useRef(null);
@@ -237,7 +239,7 @@ export default function VideoCallModal({
       }
     } catch (error) {
       console.error('Error initializing call:', error);
-      alert('Could not access camera/microphone. Please check permissions.');
+      setToast({ message: 'Could not access camera/microphone. Please check permissions.', type: 'error' });
       onClose();
     }
   };
@@ -512,6 +514,15 @@ export default function VideoCallModal({
 
   return (
     <div className="fixed inset-0 z-50 bg-black flex flex-col overflow-hidden">
+      {/* Toast Notification */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
+      
       {/* Header - Messenger style */}
       {callStatus !== 'incoming' && (
         <div className="absolute top-0 left-0 right-0 z-20 pointer-events-none">

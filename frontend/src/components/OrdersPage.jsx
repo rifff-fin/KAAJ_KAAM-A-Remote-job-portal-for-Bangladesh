@@ -2,6 +2,8 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import API from '../api';
+import CancelOrderModal from './CancelOrderModal';
+import Toast from './Toast';
 import {
   FiMessageSquare,
   FiCheckCircle,
@@ -28,6 +30,8 @@ export default function OrdersPage() {
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
+  const [selectedOrderToCancel, setSelectedOrderToCancel] = useState(null);
+  const [toast, setToast] = useState(null);
 
   const user = JSON.parse(localStorage.getItem('user') || 'null');
 
@@ -142,10 +146,12 @@ const fetchReviewedOrders = async () => {
     }
   };
 
-  const handleStatusUpdate = async (orderId, status) => {
+  const handleStatusUpdate = async (orderId, status, reason = '') => {
     try {
-      await API.put(`/orders/${orderId}/status`, { status });
-      alert('Order status updated successfully!');
+      const updateData = { status };
+      if (reason) updateData.cancellationReason = reason;
+      await API.put(`/orders/${orderId}/status`, updateData);
+      fetchOrders();
       
       // Refresh orders and profile - even if these fail, status update succeeded
       try {
@@ -160,8 +166,25 @@ const fetchReviewedOrders = async () => {
         console.error('Error refreshing data:', refreshErr);
         // Don't show error - status update already succeeded
       }
-    } catch (err) {
-      alert(err?.response?.data?.message || 'Failed to update order status');
+
+      setToast({ message: 'Order status updated successfully!', type: 'success' });
+    } catch {
+      setToast({ message: 'Failed to update order status', type: 'error' });
+    }
+  };
+
+  const handleCancelOrder = async (orderId, reason) => {
+    await handleStatusUpdate(orderId, 'cancelled', reason);
+    setSelectedOrderToCancel(null);
+  };
+
+  const handleConfirmPayment = async (orderId) => {
+    try {
+      await API.put(`/orders/${orderId}/pay`);
+      fetchOrders(); // refresh orders
+      setToast({ message: 'Payment confirmed successfully!', type: 'success' });
+    } catch (error) {
+      setToast({ message: error.response?.data?.message || "Payment failed", type: 'error' });
     }
   };
 
@@ -193,6 +216,15 @@ const fetchReviewedOrders = async () => {
   return (
     <div className="min-h-screen bg-gray-100 p-5">
       <div className="max-w-6xl mx-auto">
+
+        {/* Toast Notification */}
+        {toast && (
+          <Toast
+            message={toast.message}
+            type={toast.type}
+            onClose={() => setToast(null)}
+          />
+        )}
 
         {/* Error Message */}
         {error && (
@@ -314,12 +346,11 @@ const fetchReviewedOrders = async () => {
   {userRole === "buyer" &&
     order.status === "activated" &&
     order.paymentStatus === "pending" && (
-      <button
-        onClick={() => handleConfirmPayment(order._id)}
-        className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
-      >
-        Confirm Payment
-      </button>
+      <ActionButton
+        label="Confirm Payment"
+        color="green"
+        onClick={() => handleConfirmPayment(order)}
+      />
   )}
 
                   {userRole === 'seller' && order.status === 'pending' && (
@@ -409,11 +440,7 @@ const fetchReviewedOrders = async () => {
                       <ActionButton
                         label="Cancel"
                         color="gray"
-                        onClick={() => {
-                          if (window.confirm('Cancel this order?')) {
-                            handleStatusUpdate(order._id, 'cancelled');
-                          }
-                        }}
+                        onClick={() => setSelectedOrderToCancel(order)}
                       />
                     )}
                 </div>
@@ -469,8 +496,32 @@ const fetchReviewedOrders = async () => {
           />
         )}
       </div>
+
+      {/* Cancel Order Modal */}
+      {selectedOrderToCancel && (
+        <CancelOrderModal
+          order={selectedOrderToCancel}
+          onClose={() => setSelectedOrderToCancel(null)}
+          onConfirm={handleCancelOrder}
+        />
+      )}
     </div>
   );
+
+  // Handle cancel order
+  const handleCancelOrder = async (orderId, reason) => {
+    try {
+      await API.put(`/orders/${orderId}/cancel`, { reason });
+      setToast({ message: 'Order cancelled successfully', type: 'success' });
+      setSelectedOrderToCancel(null);
+      fetchOrders();
+    } catch (err) {
+      setToast({ 
+        message: err?.response?.data?.message || 'Failed to cancel order', 
+        type: 'error' 
+      });
+    }
+  };
 }
 
 /* ------------------ SMALL COMPONENTS ------------------ */

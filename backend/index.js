@@ -45,6 +45,8 @@ app.use('/api/proposals', require('./routes/proposal'));
 app.use('/api/reviews', require('./routes/review'));
 app.use('/api/notifications', require('./routes/notification'));
 app.use('/api/meetings', require('./routes/meeting'));
+app.use('/api/feed', require('./routes/feed'));
+app.use('/api/search', require('./routes/search'));
 app.use('/api/settings', require('./routes/settings'));
 app.use('/api/withdrawals', require('./routes/withdrawal'));
 app.use('/api/deposits', require('./routes/deposit'));

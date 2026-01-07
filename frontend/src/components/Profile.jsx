@@ -11,6 +11,8 @@ import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, R
 import API from '../api';
 import StatCard from './StatCard';
 import ReviewCard from './ReviewCard';
+import Toast from './Toast';
+import ConfirmationModal from './ConfirmationModal';
 import FinancialStats from './FinancialStats';
 import { formatCurrency, formatDate, formatRating } from '../utils/formatters';
 
@@ -22,6 +24,8 @@ export default function Profile() {
   const [gigs, setGigs] = useState([]);
   const [jobs, setJobs] = useState([]);
   const [reviews, setReviews] = useState([]);
+  const [posts, setPosts] = useState([]);
+  const [isFollowing, setIsFollowing] = useState(false);
   const [reviewFilter, setReviewFilter] = useState('all');
   const [editMode, setEditMode] = useState(false);
   const [form, setForm] = useState({});
@@ -29,6 +33,8 @@ export default function Profile() {
   const [uploading, setUploading] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
   const [showShareModal, setShowShareModal] = useState(false);
+  const [toast, setToast] = useState(null);
+  const [confirmModal, setConfirmModal] = useState(null);
   const [showReportModal, setShowReportModal] = useState(false);
   const [reportReason, setReportReason] = useState('');
   const navigate = useNavigate();
@@ -87,12 +93,21 @@ export default function Profile() {
       const res = await API.get(`/profile/${otherUserId}`);
       if (res.data.success && res.data.user) {
         setProfileUser(res.data.user);
+        
+        // Check if current user is following this profile
+        if (user) {
+          const isCurrentlyFollowing = user.following?.some(
+            id => id === otherUserId || id._id === otherUserId || id.toString() === otherUserId.toString()
+          ) || false;
+          setIsFollowing(isCurrentlyFollowing);
+        }
+        
         fetchData(res.data.user);
       }
     } catch (err) {
       console.error('Error fetching other user profile:', err);
-      alert('Failed to load profile');
-      navigate('/');
+      setToast({ message: 'Failed to load profile', type: 'error' });
+      setTimeout(() => navigate('/'), 2000);
     } finally {
       setLoading(false);
     }
@@ -119,6 +134,24 @@ export default function Profile() {
         console.error('Error fetching reviews:', err);
         setReviews([]);
       }
+
+      // Fetch user's posts
+      try {
+        const postsRes = await API.get(`/feed/user/${userId}`);
+        setPosts(postsRes.data.posts || []);
+      } catch (err) {
+        console.error('Error fetching posts:', err);
+        setPosts([]);
+      }
+
+      // Check if current user follows this profile
+      if (!isOwnProfile && user) {
+        const userId = targetUser.id || targetUser._id;
+        const isCurrentlyFollowing = user.following?.some(
+          id => id === userId || id._id === userId || id.toString() === userId.toString()
+        ) || false;
+        setIsFollowing(isCurrentlyFollowing);
+      }
     } catch (err) {
       console.error('Error fetching data:', err);
     } finally {
@@ -134,25 +167,98 @@ export default function Profile() {
       navigate(`/chat/${res.data._id}`);
     } catch (err) {
       console.error('Error creating conversation:', err);
-      alert('Failed to start conversation');
+      setToast({ message: 'Failed to start conversation', type: 'error' });
     }
   };
 
   const handleBlockUser = async () => {
-    if (!confirm('Are you sure you want to block this user?')) return;
+    setConfirmModal({
+      title: 'Block User',
+      message: 'Are you sure you want to block this user?',
+      isDangerous: true,
+      onConfirm: async () => {
+        try {
+          await API.post('/profile/block', { targetUserId: profileUser._id || profileUser.id });
+          setToast({ message: 'User blocked successfully', type: 'success' });
+          setConfirmModal(null);
+          setTimeout(() => navigate('/'), 2000);
+        } catch (err) {
+          console.error('Error blocking user:', err);
+          setToast({ message: err.response?.data?.message || 'Failed to block user', type: 'error' });
+          setConfirmModal(null);
+        }
+      },
+      onCancel: () => setConfirmModal(null)
+    });
+  };
+
+  const handleFollowToggle = async () => {
+    const targetUserId = profileUser._id || profileUser.id;
+    const currentUserId = user.id || user._id;
+    
+    // Optimistic update - update UI immediately
+    const wasFollowing = isFollowing;
+    setIsFollowing(!isFollowing);
+    
+    // Update follower count immediately
+    const updatedProfileUser = { ...profileUser };
+    if (!wasFollowing) {
+      // Following
+      if (!updatedProfileUser.followers) updatedProfileUser.followers = [];
+      updatedProfileUser.followers.push(currentUserId);
+    } else {
+      // Unfollowing
+      if (updatedProfileUser.followers) {
+        updatedProfileUser.followers = updatedProfileUser.followers.filter(
+          id => id !== currentUserId && id._id !== currentUserId
+        );
+      }
+    }
+    setProfileUser(updatedProfileUser);
+    
+    // Update local user data immediately
+    const updatedUser = { ...user };
+    if (!wasFollowing) {
+      if (!updatedUser.following) updatedUser.following = [];
+      updatedUser.following.push(targetUserId);
+    } else {
+      if (updatedUser.following) {
+        updatedUser.following = updatedUser.following.filter(id => id !== targetUserId);
+      }
+    }
+    setUser(updatedUser);
+    localStorage.setItem('user', JSON.stringify(updatedUser));
+    
     try {
-      await API.post('/profile/block', { targetUserId: profileUser._id || profileUser.id });
-      alert('User blocked successfully');
-      navigate('/');
+      // Make API call in background
+      if (wasFollowing) {
+        await API.post(`/profile/unfollow/${targetUserId}`);
+      } else {
+        await API.post(`/profile/follow/${targetUserId}`);
+      }
     } catch (err) {
-      console.error('Error blocking user:', err);
-      alert(err.response?.data?.message || 'Failed to block user');
+      console.error('Error toggling follow:', err);
+      
+      // Don't revert if error is "already following/unfollowing" - state is correct
+      const errorMsg = err.response?.data?.message || '';
+      if (errorMsg.includes('already following') || errorMsg.includes('not following')) {
+        // State is already correct, just return
+        return;
+      }
+      
+      // Revert on other errors
+      setIsFollowing(wasFollowing);
+      setProfileUser(profileUser);
+      setUser(user);
+      localStorage.setItem('user', JSON.stringify(user));
+      
+      alert(err.response?.data?.message || 'Failed to update follow status');
     }
   };
 
   const handleReportUser = async () => {
     if (!reportReason.trim() || reportReason.trim().length < 10) {
-      alert('Please provide a detailed reason (at least 10 characters)');
+      setToast({ message: 'Please provide a detailed reason (at least 10 characters)', type: 'error' });
       return;
     }
     try {
@@ -160,19 +266,19 @@ export default function Profile() {
         targetUserId: profileUser._id || profileUser.id,
         reason: reportReason.trim()
       });
-      alert('User reported successfully. Our team will review this report.');
+      setToast({ message: 'User reported successfully. Our team will review this report.', type: 'success' });
       setShowReportModal(false);
       setReportReason('');
     } catch (err) {
       console.error('Error reporting user:', err);
-      alert(err.response?.data?.message || 'Failed to report user');
+      setToast({ message: err.response?.data?.message || 'Failed to report user', type: 'error' });
     }
   };
 
   const handleShareProfile = () => {
     const profileUrl = `${window.location.origin}/profile/${profileUser._id || profileUser.id}`;
     navigator.clipboard.writeText(profileUrl);
-    alert('Profile link copied to clipboard!');
+    setToast({ message: 'Profile link copied to clipboard!', type: 'success' });
     setShowShareModal(false);
   };
 
@@ -194,7 +300,7 @@ export default function Profile() {
           }
         } catch (err) {
           console.error('Avatar upload error:', err);
-          alert('Failed to upload avatar: ' + (err.response?.data?.message || err.message));
+          setToast({ message: 'Failed to upload avatar: ' + (err.response?.data?.message || err.message), type: 'error' });
         }
       }
 
@@ -246,11 +352,11 @@ export default function Profile() {
         
         setEditMode(false);
         setForm({});
-        alert('Profile updated successfully!');
+        setToast({ message: 'Profile updated successfully!', type: 'success' });
       }
     } catch (err) {
       console.error('Update error:', err);
-      alert(err.response?.data?.message || 'Update failed');
+      setToast({ message: err.response?.data?.message || 'Update failed', type: 'error' });
     } finally {
       setUploading(false);
     }
@@ -322,6 +428,26 @@ export default function Profile() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 py-8">
+      {/* Toast Notification */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
+
+      {/* Confirmation Modal */}
+      {confirmModal && (
+        <ConfirmationModal
+          title={confirmModal.title}
+          message={confirmModal.message}
+          isDangerous={confirmModal.isDangerous}
+          onConfirm={confirmModal.onConfirm}
+          onCancel={confirmModal.onCancel}
+        />
+      )}
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Profile Header */}
@@ -376,6 +502,12 @@ export default function Profile() {
                     <span className="flex items-center gap-1">
                       <Clock className="w-4 h-4" />
                       {getLastActive()}
+                    </span>
+                    <span className="flex items-center gap-1 font-medium text-gray-900">
+                      {profileUser?.followers?.length || 0} Followers
+                    </span>
+                    <span className="flex items-center gap-1 font-medium text-gray-900">
+                      {profileUser?.following?.length || 0} Following
                     </span>
                     <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium">
                       {profileUser?.role === 'seller' ? 'Freelancer' : 'Client'}
@@ -433,8 +565,19 @@ export default function Profile() {
                 ) : (
                   <>
                     <button
+                      onClick={handleFollowToggle}
+                      className={`flex items-center gap-2 px-6 py-3 rounded-xl transition shadow-md hover:shadow-lg ${
+                        isFollowing
+                          ? 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                          : 'bg-blue-600 text-white hover:bg-blue-700'
+                      }`}
+                    >
+                      <User className="w-4 h-4" />
+                      {isFollowing ? 'Following' : 'Follow'}
+                    </button>
+                    <button
                       onClick={handleStartConversation}
-                      className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition shadow-md hover:shadow-lg"
+                      className="flex items-center gap-2 px-6 py-3 bg-white border-2 border-blue-600 text-blue-600 rounded-xl hover:bg-blue-50 transition"
                     >
                       <MessageSquare className="w-4 h-4" />
                       Message
@@ -620,7 +763,7 @@ export default function Profile() {
         <div className="bg-white rounded-2xl shadow-lg mb-8">
           <div className="border-b border-gray-200">
             <div className="flex overflow-x-auto">
-              {['overview', 'portfolio', 'reviews', 'stats'].map((tab) => (
+              {['overview', 'posts', 'portfolio', 'reviews', 'stats'].map((tab) => (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
@@ -886,6 +1029,79 @@ export default function Profile() {
                     )}
                   </div>
                 </div>
+              </div>
+            )}
+
+            {/* Posts Tab */}
+            {activeTab === 'posts' && (
+              <div>
+                <h3 className="text-2xl font-bold text-gray-900 mb-6">Posts ({posts.length})</h3>
+                
+                {posts.length === 0 ? (
+                  <div className="text-center py-12 bg-gray-50 rounded-xl">
+                    <MessageSquare className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+                    <p className="text-gray-500">No posts yet</p>
+                    {isOwnProfile && (
+                      <Link to="/feed" className="text-blue-600 hover:underline mt-2 inline-block">
+                        Create your first post
+                      </Link>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {posts.map(post => (
+                      <div key={post._id} className="bg-white border border-gray-200 rounded-lg p-4">
+                        <div className="flex items-start gap-3">
+                          {profileUser?.profile?.avatar ? (
+                            <img 
+                              src={profileUser.profile.avatar} 
+                              alt={profileUser.name}
+                              className="w-10 h-10 rounded-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
+                              <span className="text-gray-600 text-sm font-medium">
+                                {profileUser?.name?.charAt(0).toUpperCase()}
+                              </span>
+                            </div>
+                          )}
+                          <div className="flex-1">
+                            <div className="flex items-center justify-between">
+                              <h4 className="font-medium text-sm text-gray-900">{profileUser?.name}</h4>
+                              <span className="text-xs text-gray-500">
+                                {new Date(post.createdAt).toLocaleDateString('en-US', {
+                                  month: 'short',
+                                  day: 'numeric'
+                                })}
+                              </span>
+                            </div>
+                            <p className="text-sm text-gray-800 mt-2 whitespace-pre-wrap">{post.body}</p>
+                            
+                            {post.media && post.media.length > 0 && (
+                              <div className={`mt-3 ${post.media.length === 1 ? '' : 'grid grid-cols-2 gap-2'}`}>
+                                {post.media.map((item, index) => (
+                                  <div key={index}>
+                                    {item.type === 'video' ? (
+                                      <video src={item.url} controls className="w-full rounded" />
+                                    ) : (
+                                      <img src={item.url} alt="" className="w-full rounded" />
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+
+                            <div className="flex items-center gap-4 mt-3 text-xs text-gray-500">
+                              <span>{post.upvoteCount || 0} likes</span>
+                              <span>{post.commentCount || 0} comments</span>
+                              <span>{post.share || 0} shares</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
