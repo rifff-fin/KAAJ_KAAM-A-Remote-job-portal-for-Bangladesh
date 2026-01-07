@@ -1,12 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import API from '../api';
 import { useParams, useNavigate } from 'react-router-dom';
-import { MessageSquare, Star, Clock, Eye, TrendingUp } from 'lucide-react';
+import { MessageSquare, Star, Clock, MousePointerClick, TrendingUp, Edit, Trash2 } from 'lucide-react';
 
 export default function GigDetails() {
   const { id } = useParams();
   const [gig, setGig] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editForm, setEditForm] = useState({});
+  const [editLoading, setEditLoading] = useState(false);
   const navigate = useNavigate();
   
   // Get user with proper error handling
@@ -191,6 +194,68 @@ export default function GigDetails() {
     }
   };
 
+  const handleEditGig = () => {
+    setEditForm({
+      description: gig.description,
+      category: gig.category,
+      price: gig.basePrice,
+      deliveryTime: gig.deliveryDays,
+      image: null
+    });
+    setShowEditModal(true);
+  };
+
+  const handleUpdateGig = async (e) => {
+    e.preventDefault();
+    setEditLoading(true);
+    
+    try {
+      const data = new FormData();
+      if (editForm.description) data.append('description', editForm.description);
+      if (editForm.category) data.append('category', editForm.category);
+      if (editForm.price) data.append('price', editForm.price);
+      if (editForm.deliveryTime) data.append('deliveryTime', editForm.deliveryTime);
+      if (editForm.image) data.append('image', editForm.image);
+
+      const token = localStorage.getItem('token');
+      const response = await API.put(`/gigs/${gig._id}`, data, {
+        headers: {
+          'x-auth-token': token
+        }
+      });
+
+      alert('Gig updated successfully!');
+      setGig(response.data.gig);
+      setShowEditModal(false);
+    } catch (err) {
+      const msg = err?.response?.data?.message || 'Failed to update gig';
+      alert(msg);
+    } finally {
+      setEditLoading(false);
+    }
+  };
+
+  const handleDeleteGig = async () => {
+    if (!window.confirm('Are you sure you want to delete this gig? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('token');
+      await API.delete(`/gigs/${gig._id}`, {
+        headers: {
+          'x-auth-token': token
+        }
+      });
+      
+      alert('Gig deleted successfully');
+      navigate('/seller-dashboard');
+    } catch (err) {
+      const msg = err?.response?.data?.message || 'Failed to delete gig';
+      alert(msg);
+    }
+  };
+
   if (loading) return <p className="text-center py-20">Loading...</p>;
   if (!gig) return null;
 
@@ -216,8 +281,8 @@ export default function GigDetails() {
               {/* Stats */}
               <div className="grid grid-cols-3 gap-4 mt-6">
                 <div className="bg-gray-50 rounded-lg p-4 text-center">
-                  <Eye className="w-5 h-5 mx-auto mb-1 text-gray-600" />
-                  <p className="text-sm text-gray-600">Views</p>
+                  <MousePointerClick className="w-5 h-5 mx-auto mb-1 text-gray-600" />
+                  <p className="text-sm text-gray-600">Clicks</p>
                   <p className="font-bold text-gray-900">{gig.stats?.views || 0}</p>
                 </div>
                 <div className="bg-gray-50 rounded-lg p-4 text-center">
@@ -285,6 +350,27 @@ export default function GigDetails() {
 
               {/* Action Buttons */}
               <div className="mt-8 space-y-3">
+                {/* Owner actions - Edit and Delete */}
+                {user?.role === 'seller' && gig.seller?._id && String(user.id || user._id) === String(gig.seller._id) && (
+                  <>
+                    <button
+                      onClick={handleEditGig}
+                      className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white py-4 rounded-xl font-bold hover:shadow-lg transition-all transform hover:scale-105"
+                    >
+                      <Edit className="w-5 h-5" />
+                      Edit Gig
+                    </button>
+                    <button
+                      onClick={handleDeleteGig}
+                      className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-red-600 to-pink-600 text-white py-4 rounded-xl font-bold hover:shadow-lg transition-all transform hover:scale-105"
+                    >
+                      <Trash2 className="w-5 h-5" />
+                      Delete Gig
+                    </button>
+                  </>
+                )}
+
+                {/* Buyer actions */}
                 {user?.role === 'buyer' && gig.seller?._id !== user.id && (
                   <>
                     <button
@@ -315,6 +401,112 @@ export default function GigDetails() {
             </div>
           </div>
         </div>
+
+        {/* Edit Modal */}
+        {showEditModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+              <div className="p-8">
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-3xl font-bold text-gray-900">Edit Gig</h2>
+                  <button
+                    onClick={() => setShowEditModal(false)}
+                    className="text-gray-500 hover:text-gray-700 text-2xl"
+                  >
+                    ×
+                  </button>
+                </div>
+
+                <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <p className="text-sm text-yellow-800">
+                    <strong>Note:</strong> You can edit your gig once per week. Title and category cannot be changed.
+                  </p>
+                </div>
+
+                <form onSubmit={handleUpdateGig} className="space-y-5">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Title (Cannot be changed)</label>
+                    <input
+                      type="text"
+                      value={gig.title}
+                      disabled
+                      className="w-full p-3 border border-gray-300 rounded-lg bg-gray-100 text-gray-600 cursor-not-allowed"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Category (Cannot be changed)</label>
+                    <input
+                      type="text"
+                      value={gig.category}
+                      disabled
+                      className="w-full p-3 border border-gray-300 rounded-lg bg-gray-100 text-gray-600 cursor-not-allowed"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
+                    <textarea
+                      value={editForm.description}
+                      onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                      className="w-full p-3 border border-gray-300 rounded-lg h-32 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Price (BDT)</label>
+                    <input
+                      type="number"
+                      value={editForm.price}
+                      onChange={(e) => setEditForm({ ...editForm, price: e.target.value })}
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Delivery Days</label>
+                    <input
+                      type="number"
+                      value={editForm.deliveryTime}
+                      onChange={(e) => setEditForm({ ...editForm, deliveryTime: e.target.value })}
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Change Image (Optional)</label>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => setEditForm({ ...editForm, image: e.target.files[0] })}
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+
+                  <div className="flex gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setShowEditModal(false)}
+                      className="flex-1 py-3 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={editLoading}
+                      className="flex-1 py-3 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {editLoading ? 'Updating...' : 'Update Gig'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

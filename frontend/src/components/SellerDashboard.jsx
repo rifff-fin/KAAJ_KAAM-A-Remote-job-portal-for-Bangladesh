@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Plus, Briefcase, TrendingUp, DollarSign, Star, Eye, Edit, Package, Clock, CheckCircle, XCircle } from 'lucide-react';
+import { Plus, Briefcase, TrendingUp, DollarSign, Star, MousePointerClick, Edit, Trash2, Package, Clock, CheckCircle, XCircle } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import API from '../api';
 import StatCard from './StatCard';
@@ -15,6 +15,10 @@ export default function SellerDashboard() {
   const [orderFilter, setOrderFilter] = useState('all');
   const [selectedJob, setSelectedJob] = useState(null);
   const [showApplyModal, setShowApplyModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingGig, setEditingGig] = useState(null);
+  const [editForm, setEditForm] = useState({});
+  const [editLoading, setEditLoading] = useState(false);
   const navigate = useNavigate();
   const user = JSON.parse(localStorage.getItem('user') || 'null');
 
@@ -63,6 +67,67 @@ export default function SellerDashboard() {
   const handleApplyJob = (job) => {
     setSelectedJob(job);
     setShowApplyModal(true);
+  };
+
+  const handleEditGig = (gig) => {
+    setEditingGig(gig);
+    setEditForm({
+      description: gig.description,
+      price: gig.basePrice,
+      deliveryTime: gig.deliveryDays,
+      image: null
+    });
+    setShowEditModal(true);
+  };
+
+  const handleUpdateGig = async (e) => {
+    e.preventDefault();
+    setEditLoading(true);
+
+    try {
+      const data = new FormData();
+      if (editForm.description) data.append('description', editForm.description);
+      if (editForm.price) data.append('price', editForm.price);
+      if (editForm.deliveryTime) data.append('deliveryTime', editForm.deliveryTime);
+      if (editForm.image) data.append('image', editForm.image);
+
+      const token = localStorage.getItem('token');
+      const response = await API.put(`/gigs/${editingGig._id}`, data, {
+        headers: {
+          'x-auth-token': token
+        }
+      });
+
+      alert('Gig updated successfully!');
+      setShowEditModal(false);
+      fetchData(); // Refresh data
+    } catch (err) {
+      const msg = err?.response?.data?.message || 'Failed to update gig';
+      alert(msg);
+    } finally {
+      setEditLoading(false);
+    }
+  };
+
+  const handleDeleteGig = async (gigId) => {
+    if (!window.confirm('Are you sure you want to delete this gig? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('token');
+      await API.delete(`/gigs/${gigId}`, {
+        headers: {
+          'x-auth-token': token
+        }
+      });
+
+      alert('Gig deleted successfully');
+      fetchData(); // Refresh data
+    } catch (err) {
+      const msg = err?.response?.data?.message || 'Failed to delete gig';
+      alert(msg);
+    }
   };
 
   const filteredOrders = orderFilter === 'all' 
@@ -207,8 +272,8 @@ export default function SellerDashboard() {
                     
                     <div className="flex items-center gap-4 text-sm text-gray-600 mb-4">
                       <span className="flex items-center gap-1">
-                        <Eye className="w-4 h-4" />
-                        {gig.stats?.views || 0} views
+                        <MousePointerClick className="w-4 h-4" />
+                        {gig.stats?.views || 0} clicks
                       </span>
                       <span className="flex items-center gap-1">
                         <TrendingUp className="w-4 h-4" />
@@ -218,13 +283,23 @@ export default function SellerDashboard() {
                     
                     <div className="flex gap-2">
                       <Link
-                        to={`/gig/${gig._id}`}
-                        className="flex-1 text-center py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium"
+                        to={`/gigs/${gig._id}`}
+                        className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition text-center text-sm font-medium"
                       >
                         View
                       </Link>
-                      <button className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition">
+                      <button
+                        onClick={() => handleEditGig(gig)}
+                        className="px-4 py-2 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition text-sm font-medium flex items-center gap-1"
+                      >
                         <Edit className="w-4 h-4" />
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleDeleteGig(gig._id)}
+                        className="px-4 py-2 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition text-sm font-medium"
+                      >
+                        <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
                   </div>
@@ -396,6 +471,128 @@ export default function SellerDashboard() {
             }}
             onSuccess={fetchData}
           />
+        )}
+
+        {/* Edit Gig Modal */}
+        {showEditModal && editingGig && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+              <div className="p-6 border-b sticky top-0 bg-white z-10">
+                <div className="flex justify-between items-center">
+                  <h2 className="text-2xl font-bold text-gray-900">Edit Gig</h2>
+                  <button
+                    onClick={() => setShowEditModal(false)}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    <X className="w-6 h-6" />
+                  </button>
+                </div>
+              </div>
+
+              <form onSubmit={handleUpdateGig} className="p-6 space-y-6">
+                {/* Title (Disabled) */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Title (Cannot be changed)
+                  </label>
+                  <input
+                    type="text"
+                    value={editingGig.title}
+                    disabled
+                    className="w-full px-4 py-3 rounded-xl border border-gray-300 bg-gray-100 text-gray-500 cursor-not-allowed"
+                  />
+                </div>
+
+                {/* Category (Disabled) */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Category (Cannot be changed)
+                  </label>
+                  <input
+                    type="text"
+                    value={editingGig.category}
+                    disabled
+                    className="w-full px-4 py-3 rounded-xl border border-gray-300 bg-gray-100 text-gray-500 cursor-not-allowed"
+                  />
+                </div>
+
+                {/* Description */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Description
+                  </label>
+                  <textarea
+                    value={editForm.description}
+                    onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    rows={5}
+                    placeholder="Describe your gig..."
+                  />
+                </div>
+
+                {/* Price */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Base Price (BDT)
+                  </label>
+                  <input
+                    type="number"
+                    value={editForm.price}
+                    onChange={(e) => setEditForm({ ...editForm, price: e.target.value })}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Enter price"
+                    min="1"
+                  />
+                </div>
+
+                {/* Delivery Time */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Delivery Time (Days)
+                  </label>
+                  <input
+                    type="number"
+                    value={editForm.deliveryTime}
+                    onChange={(e) => setEditForm({ ...editForm, deliveryTime: e.target.value })}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Enter delivery time"
+                    min="1"
+                  />
+                </div>
+
+                {/* Image Upload */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Update Image (Optional)
+                  </label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => setEditForm({ ...editForm, image: e.target.files[0] })}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+
+                {/* Buttons */}
+                <div className="flex gap-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setShowEditModal(false)}
+                    className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition font-medium"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={editLoading}
+                    className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition font-medium disabled:opacity-50"
+                  >
+                    {editLoading ? 'Updating...' : 'Update Gig'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
         )}
       </div>
     </div>

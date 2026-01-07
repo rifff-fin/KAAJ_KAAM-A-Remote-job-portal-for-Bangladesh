@@ -11,6 +11,7 @@ import {
   Phone,
   Video,
   Calendar,
+  Settings,
 } from "lucide-react";
 import { socket } from "../socket";
 import API from "../api";
@@ -593,6 +594,15 @@ export default function Navbar() {
                       >
                         <User className="w-4 h-4" />
                         <span>Profile</span>
+                      </Link>
+
+                      <Link
+                        to="/settings"
+                        className="flex items-center gap-3 px-4 py-2 text-gray-700 hover:bg-gray-50 transition"
+                        onClick={() => setUserMenuOpen(false)}
+                      >
+                        <Settings className="w-4 h-4" />
+                        <span>Settings</span>
                       </Link>
 
                       <Link

@@ -11,6 +11,7 @@ import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, R
 import API from '../api';
 import StatCard from './StatCard';
 import ReviewCard from './ReviewCard';
+import FinancialStats from './FinancialStats';
 import { formatCurrency, formatDate, formatRating } from '../utils/formatters';
 
 export default function Profile() {
@@ -639,6 +640,14 @@ export default function Profile() {
             {/* Overview Tab */}
             {activeTab === 'overview' && (
               <div className="space-y-8">
+                {/* Financial Stats - Only for own profile */}
+                {isOwnProfile && (
+                  <FinancialStats 
+                    isOwnProfile={isOwnProfile} 
+                    userRole={profileUser.role}
+                  />
+                )}
+
                 {/* Stats Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                   <StatCard
@@ -656,7 +665,11 @@ export default function Profile() {
                   <StatCard
                     icon={DollarSign}
                     label={profileUser.role === 'seller' ? 'Total Earnings' : 'Total Spent'}
-                    value={formatCurrency(profileUser.stats?.totalEarnings || 0)}
+                    value={formatCurrency(
+                      profileUser.role === 'seller' 
+                        ? (profileUser.stats?.totalEarnings || 0)
+                        : (profileUser.stats?.totalSpending || 0)
+                    )}
                     color="purple"
                   />
                   <StatCard

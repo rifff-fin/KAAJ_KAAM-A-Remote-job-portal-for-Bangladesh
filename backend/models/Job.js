@@ -60,6 +60,9 @@ const jobSchema = new mongoose.Schema({
     views: { type: Number, default: 0 },
     proposals: { type: Number, default: 0 }
   },
+  lastEditedAt: {
+    type: Date
+  },
   createdAt: {
     type: Date,
     default: Date.now

@@ -16,6 +16,7 @@ import MessagesList from './components/MessagesList';
 import Profile from './components/Profile';
 import ClientDashboard from './components/ClientDashboard';
 import MessageManager from './components/MessageManager';
+import Settings from './components/Settings';
 
 import './App.css';
 import './index.css';
@@ -42,6 +43,7 @@ function App() {
         <Route path="/client-dashboard" element={<ClientDashboard />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/profile/:userId" element={<Profile />} />
+        <Route path="/settings" element={<Settings />} />
       </Routes>
     </Router>
   );

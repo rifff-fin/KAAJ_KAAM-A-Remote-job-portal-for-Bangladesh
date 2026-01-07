@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Briefcase, Search, Filter, Eye, TrendingUp, Star, User } from 'lucide-react';
+import { Briefcase, Search, Filter, MousePointerClick, TrendingUp, Star, User } from 'lucide-react';
 import API from '../api';
 import { formatCurrency } from '../utils/formatters';
 
@@ -92,13 +92,15 @@ export default function Gigs() {
               <h1 className="text-4xl font-bold text-gray-900 mb-2">Browse Gigs</h1>
               <p className="text-gray-600">Discover talented freelancers and their services</p>
             </div>
-            <button
-              onClick={handleCreateGig}
-              className="mt-4 md:mt-0 flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:shadow-lg transition font-medium"
-            >
-              <Briefcase className="w-5 h-5" />
-              Create Gig
-            </button>
+            {user?.role === 'seller' && (
+              <button
+                onClick={handleCreateGig}
+                className="mt-4 md:mt-0 flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:shadow-lg transition font-medium"
+              >
+                <Briefcase className="w-5 h-5" />
+                Create Gig
+              </button>
+            )}
           </div>
 
           {/* Search and Filter Bar */}
@@ -240,7 +242,7 @@ export default function Gigs() {
                   {/* Stats */}
                   <div className="flex items-center gap-4 text-sm text-gray-600 mb-4">
                     <span className="flex items-center gap-1">
-                      <Eye className="w-4 h-4" />
+                      <MousePointerClick className="w-4 h-4" />
                       {gig.stats?.views || 0}
                     </span>
                     <span className="flex items-center gap-1">

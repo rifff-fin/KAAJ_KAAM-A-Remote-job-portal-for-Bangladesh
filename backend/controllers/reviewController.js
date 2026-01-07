@@ -3,6 +3,7 @@ const Review = require('../models/Review');
 const Order = require('../models/Order');
 const User = require('../models/User');
 const Notification = require('../models/Notification');
+const { sendEmail } = require('../services/emailService');
 
 // ────── Create Review ──────
 const createReview = async (req, res) => {
@@ -16,9 +17,9 @@ const createReview = async (req, res) => {
       return res.status(404).json({ message: 'Order not found' });
     }
 
-    // Check if order is completed
-    if (order.status !== 'completed') {
-      return res.status(400).json({ message: 'Order must be completed to review' });
+    // Check if order is completed or delivered
+    if (order.status !== 'completed' && order.status !== 'delivered') {
+      return res.status(400).json({ message: 'Order must be delivered or completed to review' });
     }
 
     // Determine reviewee based on reviewer role
@@ -90,6 +91,26 @@ const createReview = async (req, res) => {
       'rating.breakdown': avgCategories
     });
 
+    // Check if both parties have now reviewed the order
+    const buyerReview = await Review.findOne({ order: orderId, reviewer: order.buyer });
+    const sellerReview = await Review.findOne({ order: orderId, reviewer: order.seller });
+
+    // If both have reviewed, mark as completed
+    if (buyerReview && sellerReview && order.status === 'delivered') {
+      order.status = 'completed';
+      order.completionDate = new Date();
+      await order.save();
+
+      // Credit seller's wallet when order is completed
+      const sellerAmount = order.payment?.sellerAmount || (order.price * 0.90);
+      await User.findByIdAndUpdate(order.seller, {
+        $inc: {
+          'wallet.balance': sellerAmount,
+          'stats.totalEarnings': sellerAmount
+        }
+      });
+    }
+
     // Create notification
     const notification = await Notification.create({
       recipient: reviewee,
@@ -103,6 +124,21 @@ const createReview = async (req, res) => {
     // Emit socket notification
     if (global.io) {
       global.io.to(`user_${reviewee}`).emit('new_notification', notification);
+    }
+
+    // Send email notification to reviewee
+    try {
+      const revieweeUser = await User.findById(reviewee).select('name email emailNotifications');
+      if (revieweeUser && revieweeUser.emailNotifications) {
+        await sendEmail(revieweeUser.email, 'review_received', {
+          userName: revieweeUser.name,
+          rating: rating,
+          comment: comment.substring(0, 100),
+          userId: revieweeUser._id
+        });
+      }
+    } catch (emailErr) {
+      console.error('Error sending email:', emailErr);
     }
 
     await review.populate('reviewer', 'name profile.avatar');

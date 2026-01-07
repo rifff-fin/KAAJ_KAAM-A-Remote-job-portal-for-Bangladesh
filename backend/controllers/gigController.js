@@ -68,8 +68,7 @@ exports.getAllGigs = async (req, res) => {
     }
 
     const gigs = await Gig.find(query)
-      .populate('seller', 'name email profile')
-      .sort({ createdAt: -1 });
+      .populate('seller', 'name email profile rating');
 
     // ✅ FILTER UNAVAILABLE SELLERS
     const filteredGigs = gigs.filter(gig =>
@@ -78,7 +77,24 @@ exports.getAllGigs = async (req, res) => {
       gig.seller.profile.availability === 'available'
     );
 
-    res.json(filteredGigs);
+    // ✅ CALCULATE KK RATING AND SORT
+    // KK Rating = orders + clicks + (seller rating * 10)
+    const gigsWithRating = filteredGigs.map(gig => {
+      const orders = gig.stats?.orders || 0;
+      const clicks = gig.stats?.views || 0;
+      const sellerRating = gig.seller?.rating?.average || 0;
+      const kkRating = orders + clicks + (sellerRating * 10);
+      
+      return {
+        ...gig.toObject(),
+        kkRating
+      };
+    });
+
+    // Sort by KK rating (highest first)
+    gigsWithRating.sort((a, b) => b.kkRating - a.kkRating);
+
+    res.json(gigsWithRating);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -118,6 +134,11 @@ exports.getGig = async (req, res) => {
       return res.status(404).json({ message: 'Gig not available' });
     }
 
+    // ✅ INCREMENT CLICK/VIEW COUNT
+    await Gig.findByIdAndUpdate(req.params.id, {
+      $inc: { 'stats.views': 1 }
+    });
+
     res.json(gig);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -125,7 +146,7 @@ exports.getGig = async (req, res) => {
 };
 
 /* ===============================
-   UPDATE GIG
+   UPDATE GIG (WITH EDIT RESTRICTION)
 ================================ */
 exports.updateGig = async (req, res) => {
   try {
@@ -139,11 +160,32 @@ exports.updateGig = async (req, res) => {
       return res.status(403).json({ message: 'Not authorized' });
     }
 
+    // Check if user can edit (once per week restriction)
+    if (gig.lastEditedAt) {
+      const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      if (gig.lastEditedAt > oneWeekAgo) {
+        const nextEditDate = new Date(gig.lastEditedAt.getTime() + 7 * 24 * 60 * 60 * 1000);
+        return res.status(403).json({ 
+          message: 'You can only edit your gig once per week',
+          nextEditDate: nextEditDate.toISOString()
+        });
+      }
+    }
+
     const { title, description, category, price, deliveryTime } = req.body;
 
-    if (title) gig.title = title;
+    // Title cannot be edited
+    if (title && title !== gig.title) {
+      return res.status(400).json({ message: 'Title cannot be edited' });
+    }
+
+    // Category cannot be edited
+    if (category && category !== gig.category) {
+      return res.status(400).json({ message: 'Category cannot be edited' });
+    }
+
+    // Update allowed fields
     if (description) gig.description = description;
-    if (category) gig.category = category;
     if (price) gig.basePrice = Number(price);
     if (deliveryTime) gig.deliveryDays = Number(deliveryTime);
 
@@ -156,6 +198,8 @@ exports.updateGig = async (req, res) => {
       fs.unlink(req.file.path, () => {});
     }
 
+    // Update last edited timestamp
+    gig.lastEditedAt = new Date();
     await gig.save();
 
     res.json({

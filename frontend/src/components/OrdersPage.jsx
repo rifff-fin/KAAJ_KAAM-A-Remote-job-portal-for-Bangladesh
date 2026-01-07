@@ -6,9 +6,14 @@ import {
   FiMessageSquare,
   FiCheckCircle,
   FiClock,
-  FiX
+  FiX,
+  FiInfo
 } from 'react-icons/fi';
 import { formatDistanceToNow } from 'date-fns';
+import DeliveryModal from './DeliveryModal';
+import OrderDetailsModal from './OrderDetailsModal';
+import DeliveryRejectModal from './DeliveryRejectModal';
+import PaymentModal from './PaymentModal';
 
 export default function OrdersPage() {
   const navigate = useNavigate();
@@ -18,6 +23,11 @@ export default function OrdersPage() {
   const [userRole, setUserRole] = useState(null);
   const [reviewedOrders, setReviewedOrders] = useState(new Set());
   const [error, setError] = useState('');
+  const [showDeliveryModal, setShowDeliveryModal] = useState(false);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState(null);
 
   const user = JSON.parse(localStorage.getItem('user') || 'null');
 
@@ -87,29 +97,79 @@ const fetchReviewedOrders = async () => {
     navigate(`/chat/${conversationId}`);
   };
 
-  const handleStatusUpdate = async (orderId, status) => {
+  const handleConfirmPayment = (order) => {
+    setSelectedOrder(order);
+    setShowPaymentModal(true);
+  };
+
+  const handlePaymentSuccess = (updatedOrder) => {
+    // Update the order in state with the updated order data
+    setOrders(prevOrders => 
+      prevOrders.map(o => o._id === updatedOrder._id ? updatedOrder : o)
+    );
+    
+    // Refresh orders in background
+    fetchOrders();
+  };
+
+  const handleAcceptOrder = async (orderId) => {
     try {
-      await API.put(`/orders/${orderId}/status`, { status });
+      const response = await API.post(`/orders/${orderId}/accept`);
+      
+      // Update the order in state immediately with the response data
+      if (response.data) {
+        setOrders(prevOrders => 
+          prevOrders.map(o => o._id === orderId ? response.data : o)
+        );
+      }
+      
+      alert('Order accepted successfully! Payment deadline set for 7 days.');
+      
+      // Refresh orders and profile in background
       fetchOrders();
       
-      // Refresh user profile to update stats
       try {
         const profileRes = await API.get('/profile/me');
         if (profileRes.data.success && profileRes.data.user) {
           localStorage.setItem('user', JSON.stringify(profileRes.data.user));
           window.dispatchEvent(new Event('userUpdated'));
         }
-      } catch (err) {
-        console.error('Error refreshing profile:', err);
+      } catch (refreshErr) {
+        console.error('Error refreshing profile:', refreshErr);
       }
-    } catch {
-      alert('Failed to update order status');
+    } catch (err) {
+      alert(err?.response?.data?.message || 'Failed to accept order');
+    }
+  };
+
+  const handleStatusUpdate = async (orderId, status) => {
+    try {
+      await API.put(`/orders/${orderId}/status`, { status });
+      alert('Order status updated successfully!');
+      
+      // Refresh orders and profile - even if these fail, status update succeeded
+      try {
+        await fetchOrders();
+        
+        const profileRes = await API.get('/profile/me');
+        if (profileRes.data.success && profileRes.data.user) {
+          localStorage.setItem('user', JSON.stringify(profileRes.data.user));
+          window.dispatchEvent(new Event('userUpdated'));
+        }
+      } catch (refreshErr) {
+        console.error('Error refreshing data:', refreshErr);
+        // Don't show error - status update already succeeded
+      }
+    } catch (err) {
+      alert(err?.response?.data?.message || 'Failed to update order status');
     }
   };
 
   const statusStyles = {
     pending: 'border-yellow-400 text-yellow-600',
-    active: 'border-blue-500 text-blue-600',
+    activated: 'border-blue-400 text-blue-600',
+    in_progress: 'border-blue-500 text-blue-700',
+    delivered: 'border-purple-500 text-purple-600',
     completed: 'border-green-500 text-green-600',
     cancelled: 'border-red-500 text-red-600',
     disputed: 'border-orange-500 text-orange-600'
@@ -117,7 +177,7 @@ const fetchReviewedOrders = async () => {
 
   const statusIcon = (status) => {
     if (status === 'completed') return <FiCheckCircle />;
-    if (status === 'pending' || status === 'active') return <FiClock />;
+    if (status === 'pending' || status === 'activated' || status === 'in_progress' || status === 'delivered') return <FiClock />;
     if (status === 'cancelled') return <FiX />;
     return null;
   };
@@ -157,7 +217,7 @@ const fetchReviewedOrders = async () => {
 
         {/* Tabs */}
         <div className="flex gap-3 overflow-x-auto border-b pb-3 mb-6">
-          {['all', 'pending', 'active', 'completed', 'cancelled'].map(tab => (
+          {['all', 'pending', 'activated', 'in_progress', 'delivered', 'completed', 'cancelled'].map(tab => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -167,7 +227,7 @@ const fetchReviewedOrders = async () => {
                   : 'border-transparent text-gray-500 hover:text-gray-800'
               }`}
             >
-              {tab}
+              {tab === 'in_progress' ? 'In Progress' : tab}
             </button>
           ))}
         </div>
@@ -236,6 +296,15 @@ const fetchReviewedOrders = async () => {
                 {/* Actions */}
                 <div className="flex flex-col md:flex-row gap-3">
                   <ActionButton
+                    label="Details"
+                    color="purple"
+                    icon={<FiInfo />}
+                    onClick={() => {
+                      setSelectedOrder(order);
+                      setShowDetailsModal(true);
+                    }}
+                  />
+                  <ActionButton
                     label="Chat"
                     color="blue"
                     icon={<FiMessageSquare />}
@@ -243,7 +312,7 @@ const fetchReviewedOrders = async () => {
                   />
                  {/* Buyer-only Confirm Payment */}
   {userRole === "buyer" &&
-    order.status === "active" &&
+    order.status === "activated" &&
     order.paymentStatus === "pending" && (
       <button
         onClick={() => handleConfirmPayment(order._id)}
@@ -257,21 +326,58 @@ const fetchReviewedOrders = async () => {
                     <ActionButton
                       label="Confirm"
                       color="green"
-                      onClick={() => handleStatusUpdate(order._id, 'active')}
+                      onClick={() => handleAcceptOrder(order._id)}
                     />
                   )}
 
-                  {userRole === 'seller' && order.status === 'active' && (
+                  {userRole === 'seller' && order.status === 'in_progress' && (
                     <ActionButton
-                      label="Mark Complete"
+                      label="Deliver Order"
                       color="green"
-                      onClick={() =>
-                        handleStatusUpdate(order._id, 'completed')
-                      }
+                      onClick={() => {
+                        setSelectedOrder(order);
+                        setShowDeliveryModal(true);
+                      }}
                     />
                   )}
 
-                  {order.status === 'completed' && (
+                  {userRole === 'seller' && order.status === 'activated' && order.paymentStatus !== 'completed' && (
+                    <ActionButton
+                      label="Deliver Order"
+                      color="gray"
+                      disabled={true}
+                    />
+                  )}
+
+                  {/* Accept/Reject Delivery Buttons (Buyer Only) */}
+                  {userRole === 'buyer' && order.status === 'delivered' && order.delivery?.status === 'pending' && (
+                    <>
+                      <ActionButton
+                        label="Accept Delivery"
+                        color="green"
+                        onClick={async () => {
+                          try {
+                            await API.post(`/orders/${order._id}/delivery/accept`);
+                            alert('Delivery accepted successfully!');
+                            await fetchOrders();
+                          } catch (err) {
+                            alert(err?.response?.data?.message || 'Failed to accept delivery');
+                          }
+                        }}
+                      />
+                      <ActionButton
+                        label="Reject Delivery"
+                        color="red"
+                        onClick={() => {
+                          setSelectedOrder(order);
+                          setShowRejectModal(true);
+                        }}
+                      />
+                    </>
+                  )}
+
+                  {/* Review Button - Shows after delivery acceptance for both buyer and seller */}
+                  {(order.status === 'delivered' && order.delivery?.status === 'accepted') || order.status === 'completed' ? (
                     (() => {
                       const orderId = String(order._id);
                       const isReviewed = reviewedOrders.has(orderId);
@@ -294,10 +400,12 @@ const fetchReviewedOrders = async () => {
                         />
                       );
                     })()
-                  )}
+                  ) : null}
 
+                  {/* Cancel Button - Hide after delivery is accepted or order is completed */}
                   {order.status !== 'completed' &&
-                    order.status !== 'cancelled' && (
+                    order.status !== 'cancelled' &&
+                    order.delivery?.status !== 'accepted' && (
                       <ActionButton
                         label="Cancel"
                         color="gray"
@@ -313,18 +421,57 @@ const fetchReviewedOrders = async () => {
             ))}
           </div>
         )}
+
+        {/* Delivery Modal */}
+        {showDeliveryModal && selectedOrder && (
+          <DeliveryModal
+            order={selectedOrder}
+            onClose={() => {
+              setShowDeliveryModal(false);
+              setSelectedOrder(null);
+            }}
+            onSuccess={fetchOrders}
+          />
+        )}
+
+        {/* Order Details Modal */}
+        {showDetailsModal && selectedOrder && (
+          <OrderDetailsModal
+            order={selectedOrder}
+            onClose={() => {
+              setShowDetailsModal(false);
+              setSelectedOrder(null);
+            }}
+          />
+        )}
+
+        {/* Reject Delivery Modal */}
+        {showRejectModal && selectedOrder && (
+          <DeliveryRejectModal
+            order={selectedOrder}
+            onClose={() => {
+              setShowRejectModal(false);
+              setSelectedOrder(null);
+            }}
+            onSuccess={fetchOrders}
+          />
+        )}
+
+        {/* Payment Modal */}
+        {showPaymentModal && selectedOrder && (
+          <PaymentModal
+            order={selectedOrder}
+            onClose={() => {
+              setShowPaymentModal(false);
+              setSelectedOrder(null);
+            }}
+            onSuccess={handlePaymentSuccess}
+          />
+        )}
       </div>
     </div>
   );
 }
-const handleConfirmPayment = async (orderId) => {
-  try {
-    await API.put(`/orders/${orderId}/pay`);
-    fetchOrders(); // refresh orders
-  } catch (error) {
-    alert(error.response?.data?.message || "Payment failed");
-  }
-};
 
 /* ------------------ SMALL COMPONENTS ------------------ */
 
@@ -342,6 +489,7 @@ function ActionButton({ label, onClick, color, icon, disabled }) {
     blue: 'bg-blue-500 hover:bg-blue-600 text-white',
     green: 'bg-green-500 hover:bg-green-600 text-white',
     purple: 'bg-purple-500 hover:bg-purple-600 text-white',
+    red: 'bg-red-500 hover:bg-red-600 text-white',
     gray: 'bg-gray-100 hover:bg-gray-200 text-gray-700'
   };
 
