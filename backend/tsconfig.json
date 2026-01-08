@@ -1,0 +1,29 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "commonjs",
+    "lib": ["ES2020"],
+    "allowJs": true,
+    "checkJs": false,
+    "outDir": "./dist",
+    "rootDir": "./",
+    "removeComments": true,
+    "strict": false,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "moduleResolution": "node",
+    "types": ["jest", "node"]
+  },
+  "include": [
+    "src/**/*",
+    "**/*.test.ts",
+    "models/**/*",
+    "controllers/**/*",
+    "routes/**/*",
+    "middleware/**/*",
+    "sockets/**/*"
+  ],
+  "exclude": ["node_modules", "dist"]
+}

@@ -6,7 +6,12 @@
   "type": "commonjs",
   "scripts": {
     "dev": "nodemon index.js",
-    "start": "node index.js"
+    "start": "node index.js",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:verbose": "jest --verbose",
+    "test:direct-messages": "jest 22201979_DirectMessages.test.ts"
   },
   "keywords": [],
   "author": "Abdullah Al Rifat, Farhanul Haque Mridul, Farhan Shahriar, Sajid Safiullah",
@@ -31,6 +36,15 @@
     "socket.io-redis": "^6.1.0"
   },
   "devDependencies": {
-    "nodemon": "^3.1.11"
+    "@types/jest": "^30.0.0",
+    "@types/node": "^25.0.3",
+    "@types/supertest": "^6.0.3",
+    "jest": "^30.2.0",
+    "mongodb-memory-server": "^10.4.3",
+    "nodemon": "^3.1.11",
+    "socket.io-client": "^4.8.3",
+    "supertest": "^7.2.2",
+    "ts-jest": "^29.4.6",
+    "typescript": "^5.9.3"
   }
 }
