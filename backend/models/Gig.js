@@ -50,6 +50,9 @@ const gigSchema = new mongoose.Schema({
     rating: { type: Number, default: 0 },
     reviews: { type: Number, default: 0 }
   },
+  lastEditedAt: {
+    type: Date
+  },
   createdAt: {
     type: Date,
     default: Date.now

@@ -4,6 +4,7 @@ import API from '../api';
 import { Link, useNavigate } from 'react-router-dom';
 import { Briefcase } from 'lucide-react';
 import ApplyJobModal from './ApplyJobModal';
+import { Edit, Trash2 } from 'lucide-react';
 
 export default function Jobs() {
   const [jobs, setJobs] = useState([]);
@@ -12,6 +13,10 @@ export default function Jobs() {
   const [loading, setLoading] = useState(true);
   const [applying, setApplying] = useState(null);
   const [showAll, setShowAll] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingJob, setEditingJob] = useState(null);
+  const [editForm, setEditForm] = useState({});
+  const [editLoading, setEditLoading] = useState(false);
   const [selectedJob, setSelectedJob] = useState(null);
 
   const navigate = useNavigate();
@@ -64,6 +69,75 @@ export default function Jobs() {
       setSelectedJob(null);
     } catch (err) {
       console.error('Error creating conversation:', err);
+    }
+  };
+
+  // Edit job
+  const handleEditJob = (job) => {
+    setEditingJob(job);
+    setEditForm({
+      description: job.description,
+      budget: job.budget,
+      deadline: job.deadline?.split('T')[0],
+      category: job.category,
+      skills: job.skills?.join(', ') || ''
+    });
+    setShowEditModal(true);
+  };
+
+  const handleUpdateJob = async (e) => {
+    e.preventDefault();
+    setEditLoading(true);
+
+    try {
+      const token = localStorage.getItem('token');
+      const updateData = {
+        description: editForm.description,
+        budget: editForm.budget,
+        deadline: editForm.deadline,
+        category: editForm.category,
+        skills: editForm.skills.split(',').map(s => s.trim()).filter(s => s)
+      };
+
+      const response = await API.put(`/jobs/${editingJob._id}`, updateData, {
+        headers: {
+          'x-auth-token': token
+        }
+      });
+
+      alert('Job updated successfully!');
+      
+      // Update the job in the list
+      setJobs(jobs.map(j => j._id === editingJob._id ? response.data.job : j));
+      setShowEditModal(false);
+      setEditingJob(null);
+    } catch (err) {
+      const msg = err?.response?.data?.message || 'Failed to update job';
+      alert(msg);
+    } finally {
+      setEditLoading(false);
+    }
+  };
+
+  // Delete job
+  const handleDeleteJob = async (jobId) => {
+    if (!window.confirm('Are you sure you want to delete this job? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('token');
+      await API.delete(`/jobs/${jobId}`, {
+        headers: {
+          'x-auth-token': token
+        }
+      });
+
+      alert('Job deleted successfully');
+      setJobs(jobs.filter(j => j._id !== jobId));
+    } catch (err) {
+      const msg = err?.response?.data?.message || 'Failed to delete job';
+      alert(msg);
     }
   };
 
@@ -205,8 +279,39 @@ export default function Jobs() {
                 )}
 
                 {/* Actions */}
-                <div className="mt-4">
-                  {user?.role === 'seller' ? (
+                <div className="mt-4 space-y-2">
+                  {user?.role === 'buyer' && job.postedBy._id === user.id ? (
+                    <>
+                      <Link
+                        to="/client-dashboard"
+                        className="block text-center bg-indigo-500
+                                   text-white py-3 rounded-lg font-semibold
+                                   hover:bg-indigo-600 transition"
+                      >
+                        View Applications ({job.interests?.length || 0})
+                      </Link>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          onClick={() => handleEditJob(job)}
+                          className="flex items-center justify-center gap-2 bg-blue-500
+                                     text-white py-2 rounded-lg font-semibold
+                                     hover:bg-blue-600 transition"
+                        >
+                          <Edit className="w-4 h-4" />
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleDeleteJob(job._id)}
+                          className="flex items-center justify-center gap-2 bg-red-500
+                                     text-white py-2 rounded-lg font-semibold
+                                     hover:bg-red-600 transition"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                          Delete
+                        </button>
+                      </div>
+                    </>
+                  ) : user?.role === 'seller' ? (
                     <button
                       onClick={() => handleApply(job)}
                       disabled={selectedJob?._id === job._id}
@@ -219,15 +324,6 @@ export default function Jobs() {
                     >
                       {selectedJob?._id === job._id ? 'Opening form...' : 'Apply Now'}
                     </button>
-                  ) : user?.role === 'buyer' && job.postedBy._id === user.id ? (
-                    <Link
-                      to="/client-dashboard"
-                      className="block text-center bg-indigo-500
-                                 text-white py-3 rounded-lg font-semibold
-                                 hover:bg-indigo-600 transition"
-                    >
-                      View Applications ({job.interests?.length || 0})
-                    </Link>
                   ) : (
                     <span className="text-sm text-gray-500">
                       Login as freelancer to apply
@@ -273,6 +369,121 @@ export default function Jobs() {
             onClose={() => setSelectedJob(null)}
             onSuccess={handleApplySuccess}
           />
+        )}
+
+        {/* Edit Modal */}
+        {showEditModal && editingJob && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+              <div className="p-8">
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-3xl font-bold text-gray-900">Edit Job</h2>
+                  <button
+                    onClick={() => setShowEditModal(false)}
+                    className="text-gray-500 hover:text-gray-700 text-2xl"
+                  >
+                    ×
+                  </button>
+                </div>
+
+                <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <p className="text-sm text-yellow-800">
+                    <strong>Note:</strong> You can edit your job once per week. Title cannot be changed.
+                  </p>
+                </div>
+
+                <form onSubmit={handleUpdateJob} className="space-y-5">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Title (Cannot be changed)</label>
+                    <input
+                      type="text"
+                      value={editingJob.title}
+                      disabled
+                      className="w-full p-3 border border-gray-300 rounded-lg bg-gray-100 text-gray-600 cursor-not-allowed"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
+                    <textarea
+                      value={editForm.description}
+                      onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                      className="w-full p-3 border border-gray-300 rounded-lg h-32 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Budget (BDT)</label>
+                    <input
+                      type="number"
+                      value={editForm.budget}
+                      onChange={(e) => setEditForm({ ...editForm, budget: e.target.value })}
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Deadline</label>
+                    <input
+                      type="date"
+                      value={editForm.deadline}
+                      onChange={(e) => setEditForm({ ...editForm, deadline: e.target.value })}
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
+                    <select
+                      value={editForm.category}
+                      onChange={(e) => setEditForm({ ...editForm, category: e.target.value })}
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      <option value="web">Web Development</option>
+                      <option value="design">Graphic Design</option>
+                      <option value="writing">Content Writing</option>
+                      <option value="video">Video Editing</option>
+                      <option value="marketing">Digital Marketing</option>
+                      <option value="mobile">Mobile App</option>
+                      <option value="data">Data Entry</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Skills (comma-separated)</label>
+                    <input
+                      type="text"
+                      value={editForm.skills}
+                      onChange={(e) => setEditForm({ ...editForm, skills: e.target.value })}
+                      placeholder="React, Node.js, MongoDB"
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+
+                  <div className="flex gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setShowEditModal(false)}
+                      className="flex-1 py-3 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={editLoading}
+                      className="flex-1 py-3 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {editLoading ? 'Updating...' : 'Update Job'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </div>

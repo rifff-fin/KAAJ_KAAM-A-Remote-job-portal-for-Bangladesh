@@ -333,3 +333,89 @@ exports.completeJob = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
+// Update a job (buyer only, with edit restriction)
+exports.updateJob = async (req, res) => {
+  try {
+    const job = await Job.findById(req.params.id);
+
+    if (!job) {
+      return res.status(404).json({ message: 'Job not found' });
+    }
+
+    if (job.postedBy.toString() !== req.user.id) {
+      return res.status(403).json({ message: 'Not authorized' });
+    }
+
+    // Check if user can edit (once per week restriction)
+    if (job.lastEditedAt) {
+      const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      if (job.lastEditedAt > oneWeekAgo) {
+        const nextEditDate = new Date(job.lastEditedAt.getTime() + 7 * 24 * 60 * 60 * 1000);
+        return res.status(403).json({ 
+          message: 'You can only edit your job once per week',
+          nextEditDate: nextEditDate.toISOString()
+        });
+      }
+    }
+
+    const { title, description, budget, deadline, category, skills } = req.body;
+
+    // Title cannot be edited
+    if (title && title !== job.title) {
+      return res.status(400).json({ message: 'Title cannot be edited' });
+    }
+
+    // Update allowed fields
+    if (description) job.description = description;
+    if (budget) job.budget = Number(budget);
+    if (deadline) job.deadline = deadline;
+    if (category) job.category = category;
+    if (skills) job.skills = Array.isArray(skills) ? skills : [];
+
+    // Update last edited timestamp
+    job.lastEditedAt = new Date();
+    await job.save();
+
+    res.json({
+      success: true,
+      message: 'Job updated successfully',
+      job
+    });
+  } catch (err) {
+    console.error('Update job error:', err);
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// Delete a job (buyer only)
+exports.deleteJob = async (req, res) => {
+  try {
+    const job = await Job.findById(req.params.id);
+
+    if (!job) {
+      return res.status(404).json({ message: 'Job not found' });
+    }
+
+    if (job.postedBy.toString() !== req.user.id) {
+      return res.status(403).json({ message: 'Not authorized' });
+    }
+
+    // Don't allow deletion if job has a hired freelancer
+    if (job.hiredFreelancer) {
+      return res.status(400).json({ 
+        message: 'Cannot delete a job with a hired freelancer. Please unhire first.' 
+      });
+    }
+
+    await Job.findByIdAndDelete(req.params.id);
+
+    res.json({
+      success: true,
+      message: 'Job deleted successfully'
+    });
+  } catch (err) {
+    console.error('Delete job error:', err);
+    res.status(500).json({ message: err.message });
+  }
+};

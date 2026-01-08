@@ -14,6 +14,8 @@ const notificationSchema = new mongoose.Schema({
       'proposal_accepted',
       'proposal_rejected',
       'order_created',
+      'order_activated',
+      'order_delivered',
       'order_completed',
       'new_message',
       'payment_received',

@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { 
-  Briefcase, Shield, MessageSquare, TrendingUp, Star, 
-  Zap, CheckCircle, Users, Code, Palette, Video, 
+import {
+  Briefcase, Shield, MessageSquare, TrendingUp, Star,
+  Zap, CheckCircle, Users, Code, Palette, Video,
   FileText, Bot, Sparkles, Globe, Clock, DollarSign,
   Search, ArrowRight, ChevronRight
 } from "lucide-react";
@@ -219,10 +219,10 @@ export default function Home() {
                 viewport={{ once: true }}
                 transition={{ delay: idx * 0.1 }}
                 whileHover={{ y: -5 }}
-                className="group"
+                className="group h-full"
               >
-                <Link to="/gigs" className="block">
-                  <div className="bg-white rounded-xl p-6 shadow-md hover:shadow-xl transition-all border border-gray-100 text-center">
+                <Link to="/gigs" className="block h-full">
+                  <div className="bg-white rounded-xl p-6 shadow-md hover:shadow-xl transition-all border border-gray-100 text-center h-full flex flex-col justify-center">
                     <div className={`w-14 h-14 mx-auto mb-4 rounded-full bg-gradient-to-br ${cat.color} flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform`}>
                       <cat.icon className="w-7 h-7 text-white" />
                     </div>
@@ -261,7 +261,7 @@ export default function Home() {
       </section>
 
       {/* HOW IT WORKS */}
-      <section className="py-20 bg-white">
+      <section id="how-it-works" className="py-20 bg-white">
         <div className="container mx-auto px-4">
           <motion.h2
             className="text-4xl font-bold text-center text-gray-900 mb-16"
@@ -344,25 +344,72 @@ export default function Home() {
               Built for Bangladesh 🇧🇩
             </h2>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-4xl mx-auto">
-              <div className="bg-white rounded-xl p-6 shadow-md">
-                <DollarSign className="w-8 h-8 mx-auto mb-2 text-green-600" />
-                <h4 className="font-semibold text-gray-900 mb-1">Local Payments</h4>
-                <p className="text-sm text-gray-600">bKash, Nagad supported</p>
+              {/* Card 1 */}
+              <div className="h-48 card-slide">
+                <div className="card-slide-content">
+                  <DollarSign className="w-8 h-8 mx-auto mb-2 text-green-600" />
+                  <h4 className="font-semibold text-gray-900 mb-1">Local Payments</h4>
+                  <p className="text-sm text-gray-600">bKash, Nagad supported</p>
+                </div>
+                <div className="card-slide-overlay">
+                  <p className="text-sm leading-relaxed">
+                    💳 bKash integration<br />
+                    📱 Nagad payments<br />
+                    🔒 Secure transactions<br />
+                    ✅ Instant processing
+                  </p>
+                </div>
               </div>
-              <div className="bg-white rounded-xl p-6 shadow-md">
-                <Clock className="w-8 h-8 mx-auto mb-2 text-blue-600" />
-                <h4 className="font-semibold text-gray-900 mb-1">BD Time Support</h4>
-                <p className="text-sm text-gray-600">Working hours aligned</p>
+
+              {/* Card 2 */}
+              <div className="h-48 card-slide">
+                <div className="card-slide-content">
+                  <Clock className="w-8 h-8 mx-auto mb-2 text-blue-600" />
+                  <h4 className="font-semibold text-gray-900 mb-1">BD Time Support</h4>
+                  <p className="text-sm text-gray-600">Working hours aligned</p>
+                </div>
+                <div className="card-slide-overlay">
+                  <p className="text-sm leading-relaxed">
+                    🕐 BD timezone matching<br />
+                    ⏰ Local work hours<br />
+                    📅 Holiday awareness<br />
+                    🌍 Perfect scheduling
+                  </p>
+                </div>
               </div>
-              <div className="bg-white rounded-xl p-6 shadow-md">
-                <Globe className="w-8 h-8 mx-auto mb-2 text-purple-600" />
-                <h4 className="font-semibold text-gray-900 mb-1">Bangla-friendly</h4>
-                <p className="text-sm text-gray-600">Easy to use interface</p>
+
+              {/* Card 3 */}
+              <div className="h-48 card-slide">
+                <div className="card-slide-content">
+                  <Globe className="w-8 h-8 mx-auto mb-2 text-purple-600" />
+                  <h4 className="font-semibold text-gray-900 mb-1">Bangla-friendly</h4>
+                  <p className="text-sm text-gray-600">Easy to use interface</p>
+                </div>
+                <div className="card-slide-overlay">
+                  <p className="text-sm leading-relaxed">
+                    🇧🇩 Bangla language support<br />
+                    🎨 Localized design<br />
+                    📱 Mobile-first approach<br />
+                    ✨ Intuitive navigation
+                  </p>
+                </div>
               </div>
-              <div className="bg-white rounded-xl p-6 shadow-md">
-                <Users className="w-8 h-8 mx-auto mb-2 text-orange-600" />
-                <h4 className="font-semibold text-gray-900 mb-1">Real Local Talent</h4>
-                <p className="text-sm text-gray-600">Verified Bangladeshi pros</p>
+
+              {/* Card 4 */}
+              <div className="h-48 card-slide">
+                <div className="card-slide-content">
+                  <Users className="w-8 h-8 mx-auto mb-2 text-orange-600" />
+                  <h4 className="font-semibold text-gray-900 mb-1">Real Local Talent</h4>
+                  <p className="text-sm text-gray-600">Verified Bangladeshi pros</p>
+                </div>
+                <div className="card-slide-overlay">
+                  <p className="text-sm leading-relaxed">
+                    ✅ Identity verified<br />
+                    🎓 Skill assessed<br />
+                    🏆 Quality guaranteed<br />
+                    💼 Professional network
+                  </p>
+                </div>
               </div>
             </div>
           </motion.div>
@@ -537,9 +584,9 @@ export default function Home() {
           Join thousands of successful freelancers and clients on Bangladesh's #1 remote work platform
         </motion.p>
 
-        <motion.div 
+        <motion.div
           className="flex flex-wrap gap-4 justify-center px-4"
-          whileHover={{ scale: 1.06 }} 
+          whileHover={{ scale: 1.06 }}
           whileTap={{ scale: 0.95 }}
         >
           <Link
@@ -575,7 +622,7 @@ export default function Home() {
               <ul className="space-y-2 text-sm">
                 <li><Link to={user ? "/post-job" : "/login"} className="hover:text-blue-400 transition">Post a Job</Link></li>
                 <li><Link to="/gigs" className="hover:text-blue-400 transition">Browse Freelancers</Link></li>
-                <li><Link to="/signup?role=buyer" className="hover:text-blue-400 transition">How It Works</Link></li>
+                <li><a href="#how-it-works" className="hover:text-blue-400 transition cursor-pointer">How It Works</a></li>
               </ul>
             </div>
 
@@ -583,8 +630,13 @@ export default function Home() {
               <h4 className="font-semibold mb-3 text-white">For Freelancers</h4>
               <ul className="space-y-2 text-sm">
                 <li><Link to={user ? "/jobs" : "/login"} className="hover:text-blue-400 transition">Find Jobs</Link></li>
-                <li><Link to={user ? "/create-gig" : "/login"} className="hover:text-blue-400 transition">Create Gig</Link></li>
-                <li><Link to="/signup?role=seller" className="hover:text-blue-400 transition">How It Works</Link></li>
+                {user?.role === 'seller' && (
+                  <li><Link to="/create-gig" className="hover:text-blue-400 transition">Create Gig</Link></li>
+                )}
+                {!user && (
+                  <li><Link to="/login" className="hover:text-blue-400 transition">Create Gig</Link></li>
+                )}
+                <li><a href="#how-it-works" className="hover:text-blue-400 transition cursor-pointer">How It Works</a></li>
               </ul>
             </div>
 

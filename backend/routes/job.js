@@ -10,7 +10,9 @@ const {
   showInterest,
   hireFreelancer,
   unhireFreelancer,
-  completeJob
+  completeJob,
+  updateJob,
+  deleteJob
 } = require('../controllers/jobController');
 
 // Create a new job (buyer only)
@@ -36,5 +38,11 @@ router.post('/:id/unhire', protect, unhireFreelancer);
 
 // Complete a job (buyer only)
 router.post('/:id/complete', protect, completeJob);
+
+// Update a job (buyer only)
+router.put('/:id', protect, updateJob);
+
+// Delete a job (buyer only)
+router.delete('/:id', protect, deleteJob);
 
 module.exports = router;

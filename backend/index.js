@@ -15,7 +15,7 @@ const PORT = process.env.PORT || 8080;
 const allowedOrigins = ['http://localhost:3000', 'http://localhost:5173'];
 
 app.use(cors({
-  origin: function(origin, callback) {
+  origin: function (origin, callback) {
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
@@ -47,28 +47,36 @@ app.use('/api/notifications', require('./routes/notification'));
 app.use('/api/meetings', require('./routes/meeting'));
 app.use('/api/feed', require('./routes/feed'));
 app.use('/api/search', require('./routes/search'));
+app.use('/api/settings', require('./routes/settings'));
+app.use('/api/withdrawals', require('./routes/withdrawal'));
+app.use('/api/deposits', require('./routes/deposit'));
+app.use('/api/payments', require('./routes/payment'));
 
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error('Error:', err);
-  res.status(err.status || 500).json({ 
-    message: err.message || 'Internal Server Error' 
+  res.status(err.status || 500).json({
+    message: err.message || 'Internal Server Error'
   });
 });
 
 // Socket.IO
 const server = http.createServer(app);
-const io = new Server(server, { 
-  cors: { 
+const io = new Server(server, {
+  cors: {
     origin: allowedOrigins,
     credentials: true
-  } 
+  }
 });
+
+// Make io globally accessible
+global.io = io;
 app.set('io', io);
 require('./sockets/chatSocket')(io);
 
 // Initialize meeting reminders
 const { initializeMeetingReminders } = require('./utils/meetingReminders');
+const { initOrderCronJobs } = require('./utils/orderCronJobs');
 
 // Start Server
 const startServer = async () => {
@@ -78,6 +86,8 @@ const startServer = async () => {
       console.log(`✓ Server running on http://localhost:${PORT}`);
       // Initialize meeting reminders after server starts
       initializeMeetingReminders(io);
+      // Initialize order cron jobs
+      initOrderCronJobs();
     });
   } catch (err) {
     console.error('✗ Failed to start server:', err.message);
