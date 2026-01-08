@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { X, CreditCard, Smartphone, DollarSign } from 'lucide-react';
 import API from '../api';
 
-export default function PaymentModal({ isOpen, onClose, onSuccess, order }) {
+export default function PaymentModal({ isOpen, onClose, onSuccess, order, setToast }) {
   const [step, setStep] = useState(1); // 1: Payment Method, 2: Payment Details, 3: OTP
   const [method, setMethod] = useState('');
   const [details, setDetails] = useState({});
@@ -109,7 +109,9 @@ export default function PaymentModal({ isOpen, onClose, onSuccess, order }) {
         otp
       });
 
-      alert('Payment completed successfully! The seller can now start working.');
+      if (setToast) {
+        setToast({ message: 'Payment completed successfully! The seller can now start working.', type: 'success' });
+      }
       onSuccess(response.data.order);
       handleClose();
     } catch (err) {
@@ -117,11 +119,9 @@ export default function PaymentModal({ isOpen, onClose, onSuccess, order }) {
       setError(errorMsg);
       
       if (errorMsg.includes('failed') || errorMsg.includes('expired')) {
-        setTimeout(() => {
-          if (window.confirm('Payment failed. Would you like to try again?')) {
-            handleClose();
-          }
-        }, 1000);
+        if (setToast) {
+          setToast({ message: errorMsg, type: 'error' });
+        }
       }
     } finally {
       setLoading(false);
