@@ -17,9 +17,9 @@ const createReview = async (req, res) => {
       return res.status(404).json({ message: 'Order not found' });
     }
 
-    // Check if order is completed or delivered
-    if (order.status !== 'completed' && order.status !== 'delivered') {
-      return res.status(400).json({ message: 'Order must be delivered or completed to review' });
+    // Check if order is completed, delivered, or cancelled
+    if (order.status !== 'completed' && order.status !== 'delivered' && order.status !== 'cancelled') {
+      return res.status(400).json({ message: 'Order must be delivered, completed, or cancelled to review' });
     }
 
     // Determine reviewee based on reviewer role

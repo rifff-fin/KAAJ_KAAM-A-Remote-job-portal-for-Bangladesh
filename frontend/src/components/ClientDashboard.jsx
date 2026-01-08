@@ -6,6 +6,7 @@ import StatCard from './StatCard';
 import ApplyJobModal from './ApplyJobModal';
 import Toast from './Toast';
 import ConfirmationModal from './ConfirmationModal';
+import PaymentModal from './PaymentModal';
 import { formatCurrency, formatDate } from '../utils/formatters';
 
 export default function ClientDashboard() {
@@ -16,6 +17,8 @@ export default function ClientDashboard() {
   const [showApplyModal, setShowApplyModal] = useState(false);
   const [toast, setToast] = useState(null);
   const [confirmModal, setConfirmModal] = useState(null);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState(null);
   const navigate = useNavigate();
   const user = JSON.parse(localStorage.getItem('user') || 'null');
 
@@ -57,24 +60,57 @@ export default function ClientDashboard() {
   };
 
   const hire = async (jobId, freelancerId) => {
+    try {
+      // Accept the application first
+      const response = await API.post(`/jobs/${jobId}/accept-application`, { freelancerId });
+      const acceptedOrder = response.data.order; // Access order from response.data.order
+      
+      if (!acceptedOrder || !acceptedOrder._id) {
+        throw new Error('Order not created properly');
+      }
+      
+      // Fetch the full order details with populated fields
+      const orderRes = await API.get(`/orders/${acceptedOrder._id}`);
+      const order = orderRes.data;
+      
+      // Open payment modal with the order
+      setSelectedOrder(order);
+      setShowPaymentModal(true);
+      
+      setToast({ message: 'Application accepted! Please complete payment.', type: 'success' });
+      fetchData();
+    } catch (err) {
+      console.error('Hire error:', err);
+      setToast({ message: err.response?.data?.message || 'Failed to hire freelancer', type: 'error' });
+    }
+  };
+
+  const rejectApplication = async (jobId, freelancerId) => {
     setConfirmModal({
-      title: 'Confirm Hire',
-      message: 'Are you sure you want to hire this freelancer?',
-      isDangerous: false,
+      title: 'Reject Application',
+      message: 'Are you sure you want to reject this application?',
+      isDangerous: true,
       onConfirm: async () => {
         try {
-          const response = await API.post(`/jobs/${jobId}/hire`, { freelancerId });
-          setToast({ message: 'Freelancer hired successfully!', type: 'success' });
+          await API.post(`/jobs/${jobId}/reject-application`, { freelancerId });
+          setToast({ message: 'Application rejected', type: 'success' });
           setConfirmModal(null);
           fetchData();
         } catch (err) {
-          console.error('Hire error:', err);
-          setToast({ message: err.response?.data?.message || 'Failed to hire freelancer', type: 'error' });
+          console.error('Reject error:', err);
+          setToast({ message: err.response?.data?.message || 'Failed to reject application', type: 'error' });
           setConfirmModal(null);
         }
       },
       onCancel: () => setConfirmModal(null)
     });
+  };
+
+  const handlePaymentSuccess = (updatedOrder) => {
+    setShowPaymentModal(false);
+    setSelectedOrder(null);
+    setToast({ message: 'Payment completed successfully!', type: 'success' });
+    fetchData();
   };
 
   const unhire = async (jobId) => {
@@ -332,15 +368,15 @@ export default function ClientDashboard() {
 
                   {/* Applicants */}
                   <div className="p-6">
-                    {job.interests?.length === 0 ? (
+                    {job.interests?.filter(i => !i.status || i.status === 'pending')?.length === 0 ? (
                       <p className="text-center text-gray-500 py-8">No applicants yet</p>
                     ) : (
                       <div className="space-y-3">
                         <h4 className="font-semibold text-lg text-gray-900 mb-4">
-                          Applicants ({job.interests?.length || 0})
+                          Applicants ({job.interests?.filter(i => !i.status || i.status === 'pending')?.length || 0})
                         </h4>
 
-                        {job.interests?.map(interest => (
+                        {job.interests?.filter(interest => !interest.status || interest.status === 'pending').map(interest => (
                           <div
                             key={interest.freelancer._id}
                             className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition"
@@ -389,34 +425,22 @@ export default function ClientDashboard() {
                                 <span className="hidden sm:inline">Message</span>
                               </button>
 
-                              {job.hiredFreelancer?._id === interest.freelancer._id ? (
-                                <button
-                                  disabled
-                                  className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg cursor-not-allowed"
-                                  title="This freelancer is hired"
-                                >
-                                  <CheckCircle className="w-4 h-4" />
-                                  <span className="hidden sm:inline">Hired</span>
-                                </button>
-                              ) : job.hiredFreelancer ? (
-                                <button
-                                  disabled
-                                  className="flex items-center gap-2 px-4 py-2 bg-gray-400 text-white rounded-lg cursor-not-allowed"
-                                  title="Another freelancer is already hired for this job"
-                                >
-                                  <UserX className="w-4 h-4" />
-                                  <span className="hidden sm:inline">Unavailable</span>
-                                </button>
-                              ) : (
-                                <button
-                                  onClick={() => hire(job._id, interest.freelancer._id)}
-                                  className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
-                                  title="Hire this freelancer"
-                                >
-                                  <UserCheck className="w-4 h-4" />
-                                  <span className="hidden sm:inline">Hire</span>
-                                </button>
-                              )}
+                              <button
+                                onClick={() => hire(job._id, interest.freelancer._id)}
+                                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
+                                title="Hire this freelancer and proceed to payment"
+                              >
+                                <UserCheck className="w-4 h-4" />
+                                <span className="hidden sm:inline">Hire</span>
+                              </button>
+                              <button
+                                onClick={() => rejectApplication(job._id, interest.freelancer._id)}
+                                className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
+                                title="Reject this application"
+                              >
+                                <UserX className="w-4 h-4" />
+                                <span className="hidden sm:inline">Reject</span>
+                              </button>
                             </div>
                           </div>
                         ))}
@@ -438,6 +462,19 @@ export default function ClientDashboard() {
               setSelectedJob(null);
             }}
             onSuccess={fetchData}
+          />
+        )}
+
+        {/* Payment Modal */}
+        {showPaymentModal && selectedOrder && (
+          <PaymentModal
+            isOpen={showPaymentModal}
+            order={selectedOrder}
+            onClose={() => {
+              setShowPaymentModal(false);
+              setSelectedOrder(null);
+            }}
+            onSuccess={handlePaymentSuccess}
           />
         )}
       </div>

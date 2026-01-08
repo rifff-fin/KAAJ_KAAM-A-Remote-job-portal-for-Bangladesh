@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Plus, Briefcase, TrendingUp, DollarSign, Star, MousePointerClick, Edit, Trash2, Package, Clock, CheckCircle, XCircle } from 'lucide-react';
+import { Plus, Briefcase, TrendingUp, DollarSign, Star, MousePointerClick, Edit, Trash2, Package, Clock, CheckCircle, XCircle, Eye } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import API from '../api';
 import StatCard from './StatCard';
@@ -42,8 +42,8 @@ export default function SellerDashboard() {
       setJobs(jobsRes.data);
       
       // Fetch orders
-      const ordersRes = await API.get('/orders');
-      const sellerOrders = ordersRes.data.filter(order => order.seller?._id === user.id);
+      const ordersRes = await API.get('/orders', { params: { role: 'seller' } });
+      const sellerOrders = ordersRes.data.orders || [];
       setOrders(sellerOrders);
       
       // Calculate stats
@@ -283,7 +283,7 @@ export default function SellerDashboard() {
                     
                     <div className="flex gap-2">
                       <Link
-                        to={`/gigs/${gig._id}`}
+                        to={`/gig/${gig._id}`}
                         className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition text-center text-sm font-medium"
                       >
                         View

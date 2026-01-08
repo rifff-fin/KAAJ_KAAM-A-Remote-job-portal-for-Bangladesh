@@ -111,6 +111,8 @@ exports.getJob = async (req, res) => {
 };
 
 // Show interest in a job (seller only)
+// This creates an order with 'pending' status
+// Client must accept/reject in their dashboard
 exports.showInterest = async (req, res) => {
   try {
     const { message, proposedBudget, deliveryDays } = req.body;
@@ -139,7 +141,8 @@ exports.showInterest = async (req, res) => {
 
     job.interests.push({
       freelancer: req.user.id,
-      message: message.trim()
+      message: message.trim(),
+      status: 'pending'
     });
 
     await job.save();
@@ -190,44 +193,67 @@ exports.showInterest = async (req, res) => {
   }
 };
 
-// Hire a freelancer (buyer only)
-exports.hireFreelancer = async (req, res) => {
+// Accept job application (buyer/client only)
+// This changes order status from 'pending' to 'activated'
+// After this, client must pay (same flow as gig payment)
+exports.acceptApplication = async (req, res) => {
   try {
     const { freelancerId } = req.body;
     const { id: jobId } = req.params;
     const userId = req.user.id;
 
-    const job = await Job.findById(jobId);
-    if (!job || job.postedBy.toString() !== userId) {
+    const job = await Job.findById(jobId).populate('postedBy', 'name email');
+    if (!job || job.postedBy._id.toString() !== userId) {
       return res.status(403).json({ message: 'Unauthorized' });
+    }
+
+    if (job.status !== 'open') {
+      return res.status(400).json({ message: 'This job is no longer open' });
+    }
+
+    // Check if application exists
+    const application = job.interests.find(
+      i => i.freelancer.toString() === freelancerId
+    );
+
+    if (!application) {
+      return res.status(404).json({ message: 'Application not found' });
     }
 
     const Proposal = require('../models/Proposal');
     const Order = require('../models/Order');
-    
-    // Try to find the proposal (might not exist if using interests system)
-    const proposal = await Proposal.findOne({ job: jobId, seller: freelancerId });
+    const Notification = require('../models/Notification');
+    const User = require('../models/User');
+    const { sendEmail } = require('../services/emailService');
     
     // Update proposal if it exists
+    const proposal = await Proposal.findOne({ job: jobId, seller: freelancerId });
     if (proposal) {
       proposal.status = 'accepted';
       await proposal.save();
     }
 
-    // Update job status
-    job.hiredFreelancer = freelancerId;
-    job.status = 'in-progress';
-    await job.save();
+    // Mark this application as accepted in the job
+    const interestIndex = job.interests.findIndex(
+      i => i.freelancer.toString() === freelancerId
+    );
+    if (interestIndex !== -1) {
+      job.interests[interestIndex].status = 'accepted';
+      await job.save();
+    }
 
-    // Find and update the pending order to active
+    // Find and update the pending order to activated (matching gig flow)
     const order = await Order.findOneAndUpdate(
       { job: jobId, seller: freelancerId, status: 'pending' },
-      { status: 'active' },
+      { 
+        status: 'activated',
+        paymentDeadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days to pay
+      },
       { new: true }
-    );
+    ).populate('seller', 'name email');
 
-    // If no pending order exists, create one (fallback)
     if (!order) {
+      // Fallback: create order if it doesn't exist
       const newOrder = await Order.create({
         buyer: userId,
         seller: freelancerId,
@@ -236,26 +262,141 @@ exports.hireFreelancer = async (req, res) => {
         description: job.description,
         price: proposal?.proposedPrice || job.budget,
         deliveryDays: proposal?.deliveryDays || 7,
-        dueDate: new Date(Date.now() + (proposal?.deliveryDays || 7) * 24 * 60 * 60 * 1000),
-        status: 'active'
+        status: 'activated',
+        paymentDeadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
       });
+
+      // Create notification
+      try {
+        await Notification.create({
+          recipient: freelancerId,
+          type: 'application_accepted',
+          title: 'Application Accepted!',
+          message: `${job.postedBy.name} accepted your application for "${job.title}". Waiting for payment.`,
+          relatedId: newOrder._id,
+          relatedModel: 'Order'
+        });
+
+        // Send email notification
+        const freelancer = await User.findById(freelancerId).select('name email emailNotifications');
+        if (freelancer && freelancer.emailNotifications) {
+          await sendEmail(freelancer.email, 'order_activated', {
+            freelancerName: freelancer.name,
+            clientName: job.postedBy.name,
+            jobTitle: job.title
+          });
+        }
+      } catch (notifErr) {
+        console.error('Error creating notification:', notifErr);
+      }
 
       return res.json({
         success: true,
-        message: 'Freelancer hired and order created',
-        job,
+        message: 'Application accepted! Waiting for payment to start work.',
         order: newOrder
       });
     }
 
+    // Create notification for accepted application
+    try {
+      await Notification.create({
+        recipient: freelancerId,
+        type: 'application_accepted',
+        title: 'Application Accepted!',
+        message: `${job.postedBy.name} accepted your application for "${job.title}". Waiting for payment.`,
+        relatedId: order._id,
+        relatedModel: 'Order'
+      });
+
+      // Send email notification
+      if (order.seller.emailNotifications !== false) {
+        await sendEmail(order.seller.email, 'order_activated', {
+          freelancerName: order.seller.name,
+          clientName: job.postedBy.name,
+          jobTitle: job.title
+        });
+      }
+    } catch (notifErr) {
+      console.error('Error creating notification:', notifErr);
+    }
+
     res.json({
       success: true,
-      message: 'Freelancer hired successfully',
-      job,
+      message: 'Application accepted! Waiting for payment to start work.',
       order
     });
   } catch (err) {
     console.error('Hire freelancer error:', err);
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// Reject job application (buyer/client only)
+// Legacy hire function - redirects to acceptApplication
+exports.hireFreelancer = async (req, res) => {
+  return exports.acceptApplication(req, res);
+};
+
+exports.rejectApplication = async (req, res) => {
+  try {
+    const { freelancerId } = req.body;
+    const { id: jobId } = req.params;
+    const userId = req.user.id;
+
+    const job = await Job.findById(jobId).populate('postedBy', 'name email');
+    if (!job || job.postedBy._id.toString() !== userId) {
+      return res.status(403).json({ message: 'Unauthorized' });
+    }
+
+    // Remove from interests
+    const interestIndex = job.interests.findIndex(
+      i => i.freelancer.toString() === freelancerId
+    );
+    
+    if (interestIndex !== -1) {
+      // Mark as rejected instead of removing
+      job.interests[interestIndex].status = 'rejected';
+      await job.save();
+    }
+
+    const Proposal = require('../models/Proposal');
+    const Order = require('../models/Order');
+    const Notification = require('../models/Notification');
+    
+    // Update proposal if it exists
+    const proposal = await Proposal.findOne({ job: jobId, seller: freelancerId });
+    if (proposal) {
+      proposal.status = 'rejected';
+      await proposal.save();
+    }
+
+    // Cancel the pending order
+    await Order.findOneAndUpdate(
+      { job: jobId, seller: freelancerId, status: 'pending' },
+      { status: 'cancelled' },
+      { new: true }
+    );
+
+    // Create notification
+    try {
+      await Notification.create({
+        recipient: freelancerId,
+        type: 'application_rejected',
+        title: 'Application Not Selected',
+        message: `Your application for \"${job.title}\" was not selected this time.`,
+        relatedId: jobId,
+        relatedModel: 'Job'
+      });
+    } catch (notifErr) {
+      console.error('Error creating notification:', notifErr);
+    }
+
+    res.json({
+      success: true,
+      message: 'Application rejected'
+    });
+  } catch (err) {
+    console.error('Error rejecting application:', err);
     res.status(500).json({ message: err.message });
   }
 };

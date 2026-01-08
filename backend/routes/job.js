@@ -8,6 +8,8 @@ const {
   getMyJobs,
   getJob,
   showInterest,
+  acceptApplication,
+  rejectApplication,
   hireFreelancer,
   unhireFreelancer,
   completeJob,
@@ -30,7 +32,13 @@ router.get('/:id', getJob);
 // Show interest in a job (seller only)
 router.post('/:id/interest', protect, showInterest);
 
-// Hire a freelancer (buyer only)
+// Accept application (buyer/client only)
+router.post('/:id/accept-application', protect, acceptApplication);
+
+// Reject application (buyer/client only)
+router.post('/:id/reject-application', protect, rejectApplication);
+
+// Hire a freelancer (buyer only) - legacy, redirects to accept
 router.post('/:id/hire', protect, hireFreelancer);
 
 // Unhire a freelancer (buyer only)

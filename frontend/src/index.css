@@ -11,6 +11,7 @@
     transform: translateX(400px);
     opacity: 0;
   }
+
   to {
     transform: translateX(0);
     opacity: 1;
@@ -27,6 +28,7 @@
     transform: translateX(100%);
     opacity: 0;
   }
+
   to {
     transform: translateX(0);
     opacity: 1;
@@ -37,6 +39,7 @@
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }
@@ -159,10 +162,38 @@
   box-sizing: border-box;
 }
 
+/* Prevent any element from causing horizontal overflow */
+* {
+  max-width: 100%;
+}
+
+/* Allow specific elements to have full width within their container */
+img,
+svg,
+video {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Ensure grids and flex containers don't overflow */
+[class*="grid"],
+[class*="flex"] {
+  max-width: 100%;
+}
+
+/* Ensure all sections and divs respect viewport */
+section,
+div {
+  box-sizing: border-box;
+}
+
 html,
 body,
 #root {
   height: 100%;
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: hidden;
   font-family: 'Inter', sans-serif;
   -webkit-font-smoothing: antialiased;
   background-color: #f9fafb;
@@ -172,8 +203,37 @@ body,
 
 .container {
   max-width: 1260px;
+  width: 100%;
   margin: 0 auto;
   padding: 0 1.2rem;
+  box-sizing: border-box;
+}
+
+/* Prevent horizontal scroll on all pages */
+.page-wrapper {
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+/* Ensure all direct children respect container width */
+body>*,
+#root>* {
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+/* Responsive container utilities */
+@media (max-width: 640px) {
+  .container {
+    padding: 0 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .container {
+    padding: 0 0.75rem;
+  }
 }
 
 

@@ -116,6 +116,44 @@ const fetchReviewedOrders = async () => {
     fetchOrders();
   };
 
+  const handleRejectJobApplication = async (order) => {
+    if (!window.confirm('Are you sure you want to reject this application?')) {
+      return;
+    }
+
+    try {
+      const jobId = order.job?._id || order.job;
+      await API.post(`/jobs/${jobId}/reject-application`, { 
+        freelancerId: order.seller._id 
+      });
+      setToast({ message: 'Application rejected', type: 'success' });
+      fetchOrders();
+    } catch (err) {
+      console.error('Reject error:', err);
+      setToast({ 
+        message: err?.response?.data?.message || 'Failed to reject application', 
+        type: 'error' 
+      });
+    }
+  };
+
+  const handleCancelOrder = async (orderId, reason) => {
+    try {
+      await API.delete(`/orders/${orderId}`, { 
+        data: { reason } 
+      });
+      setToast({ message: 'Order cancelled successfully', type: 'success' });
+      setSelectedOrderToCancel(null);
+      fetchOrders();
+    } catch (err) {
+      console.error('Cancel error:', err);
+      setToast({ 
+        message: err?.response?.data?.message || 'Failed to cancel order', 
+        type: 'error' 
+      });
+    }
+  };
+
   const handleAcceptOrder = async (orderId) => {
     try {
       const response = await API.post(`/orders/${orderId}/accept`);
@@ -170,21 +208,6 @@ const fetchReviewedOrders = async () => {
       setToast({ message: 'Order status updated successfully!', type: 'success' });
     } catch {
       setToast({ message: 'Failed to update order status', type: 'error' });
-    }
-  };
-
-  const handleCancelOrder = async (orderId, reason) => {
-    await handleStatusUpdate(orderId, 'cancelled', reason);
-    setSelectedOrderToCancel(null);
-  };
-
-  const handleConfirmPayment = async (orderId) => {
-    try {
-      await API.put(`/orders/${orderId}/pay`);
-      fetchOrders(); // refresh orders
-      setToast({ message: 'Payment confirmed successfully!', type: 'success' });
-    } catch (error) {
-      setToast({ message: error.response?.data?.message || "Payment failed", type: 'error' });
     }
   };
 
@@ -285,9 +308,21 @@ const fetchReviewedOrders = async () => {
                 {/* Header */}
                 <div className="flex flex-col md:flex-row justify-between gap-4 mb-4">
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-800">
-                      {order.title}
-                    </h3>
+                    <div className="flex items-center gap-2 mb-1">
+                      <h3 className="text-lg font-semibold text-gray-800">
+                        {order.title}
+                      </h3>
+                      {order.job && (
+                        <span className="px-2 py-1 bg-purple-100 text-purple-700 text-xs font-medium rounded">
+                          Job
+                        </span>
+                      )}
+                      {order.gig && (
+                        <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded">
+                          Gig
+                        </span>
+                      )}
+                    </div>
                     <p className="text-xs text-gray-400">
                       Order ID: {order._id.slice(-8)}
                     </p>
@@ -342,10 +377,29 @@ const fetchReviewedOrders = async () => {
                     icon={<FiMessageSquare />}
                     onClick={() => handleChat(order.conversationId)}
                   />
-                 {/* Buyer-only Confirm Payment */}
+                 {/* Buyer Hire/Reject for Job Orders (pending status) */}
+  {userRole === "buyer" &&
+    order.status === "pending" &&
+    order.job && (
+      <>
+        <ActionButton
+          label="Hire"
+          color="green"
+          onClick={() => handleConfirmPayment(order)}
+        />
+        <ActionButton
+          label="Reject"
+          color="red"
+          onClick={() => handleRejectJobApplication(order)}
+        />
+      </>
+  )}
+
+  {/* Buyer Confirm Payment for Job Orders (activated status - after hire) */}
   {userRole === "buyer" &&
     order.status === "activated" &&
-    order.paymentStatus === "pending" && (
+    order.paymentStatus === "pending" &&
+    order.job && (
       <ActionButton
         label="Confirm Payment"
         color="green"
@@ -353,7 +407,23 @@ const fetchReviewedOrders = async () => {
       />
   )}
 
-                  {userRole === 'seller' && order.status === 'pending' && (
+  {/* Buyer Confirm Payment for Gig Orders (activated status) */}
+  {userRole === "buyer" &&
+    order.status === "activated" &&
+    order.paymentStatus === "pending" &&
+    order.gig && (
+      <ActionButton
+        label="Confirm Payment"
+        color="green"
+        onClick={() => handleConfirmPayment(order)}
+      />
+  )}
+
+                  {/* Seller Confirm - Only for gig orders (no job), not for job applications */}
+                  {userRole === 'seller' && 
+                   order.status === 'pending' && 
+                   !order.job && 
+                   order.gig && (
                     <ActionButton
                       label="Confirm"
                       color="green"
@@ -407,8 +477,8 @@ const fetchReviewedOrders = async () => {
                     </>
                   )}
 
-                  {/* Review Button - Shows after delivery acceptance for both buyer and seller */}
-                  {(order.status === 'delivered' && order.delivery?.status === 'accepted') || order.status === 'completed' ? (
+                  {/* Review Button - Shows after delivery acceptance, completion, or cancellation for both buyer and seller */}
+                  {(order.status === 'delivered' && order.delivery?.status === 'accepted') || order.status === 'completed' || order.status === 'cancelled' ? (
                     (() => {
                       const orderId = String(order._id);
                       const isReviewed = reviewedOrders.has(orderId);
@@ -487,6 +557,7 @@ const fetchReviewedOrders = async () => {
         {/* Payment Modal */}
         {showPaymentModal && selectedOrder && (
           <PaymentModal
+            isOpen={showPaymentModal}
             order={selectedOrder}
             onClose={() => {
               setShowPaymentModal(false);
@@ -507,21 +578,6 @@ const fetchReviewedOrders = async () => {
       )}
     </div>
   );
-
-  // Handle cancel order
-  const handleCancelOrder = async (orderId, reason) => {
-    try {
-      await API.put(`/orders/${orderId}/cancel`, { reason });
-      setToast({ message: 'Order cancelled successfully', type: 'success' });
-      setSelectedOrderToCancel(null);
-      fetchOrders();
-    } catch (err) {
-      setToast({ 
-        message: err?.response?.data?.message || 'Failed to cancel order', 
-        type: 'error' 
-      });
-    }
-  };
 }
 
 /* ------------------ SMALL COMPONENTS ------------------ */

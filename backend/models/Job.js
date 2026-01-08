@@ -38,6 +38,11 @@ const jobSchema = new mongoose.Schema({
       ref: 'User'
     },
     message: String,
+    status: {
+      type: String,
+      enum: ['pending', 'accepted', 'rejected'],
+      default: 'pending'
+    },
     appliedAt: {
       type: Date,
       default: Date.now

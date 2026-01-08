@@ -230,7 +230,7 @@ export default function MessagePopup({ conversationId, otherUser, onClose, onMin
 
   if (isMinimized) {
     return (
-      <div className="fixed bottom-4 right-4 bg-white rounded-t-xl shadow-2xl w-80 z-50">
+      <div className="fixed top-20 right-4 bg-white rounded-xl shadow-2xl w-80 max-w-[calc(100vw-2rem)] z-50">
         <div className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-t-xl cursor-pointer" onClick={onMinimize}>
           <div className="flex items-center gap-3">
             <div className="relative">
@@ -275,9 +275,9 @@ export default function MessagePopup({ conversationId, otherUser, onClose, onMin
 
   return (
     <>
-      <div className="fixed bottom-4 right-4 bg-white rounded-xl shadow-2xl w-96 h-[600px] flex flex-col z-50 border border-gray-200">
+      <div className="fixed top-20 right-4 bg-white rounded-xl shadow-2xl w-96 max-w-[calc(100vw-2rem)] flex flex-col z-50 border border-gray-200" style={{ maxHeight: 'calc(100vh - 6rem)' }}>
       {/* Header */}
-      <div className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-t-xl">
+      <div className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-t-xl flex-shrink-0">
         <div className="flex items-center gap-3">
           <div className="relative">
             <Link to={`/profile/${otherUser?._id}`} target="_blank">
@@ -510,7 +510,7 @@ export default function MessagePopup({ conversationId, otherUser, onClose, onMin
 
       {/* Media & Documents Panel */}
       {showMediaPanel && (
-        <div className="fixed bottom-4 right-[416px] bg-white rounded-xl shadow-2xl w-80 max-h-[600px] overflow-y-auto z-50 border border-gray-200">
+        <div className="fixed top-20 right-[calc(1rem+24rem+1rem)] bg-white rounded-xl shadow-2xl w-80 max-w-[calc(100vw-26rem)] max-h-[calc(100vh-6rem)] overflow-y-auto z-50 border border-gray-200">
           <div className="p-5">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-lg font-bold text-gray-900">Media & Documents</h3>
@@ -591,7 +591,7 @@ export default function MessagePopup({ conversationId, otherUser, onClose, onMin
 
       {/* Contact Info Modal */}
       {showContactInfo && otherUser && !showMediaPanel && (
-        <div className="fixed bottom-4 right-[416px] bg-white rounded-xl shadow-2xl w-80 max-h-[600px] overflow-y-auto z-50 border border-gray-200">
+        <div className="fixed top-20 right-[calc(1rem+24rem+1rem)] bg-white rounded-xl shadow-2xl w-80 max-w-[calc(100vw-26rem)] max-h-[calc(100vh-6rem)] overflow-y-auto z-50 border border-gray-200">
           <div className="p-5">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-lg font-bold text-gray-900">Contact Info</h3>

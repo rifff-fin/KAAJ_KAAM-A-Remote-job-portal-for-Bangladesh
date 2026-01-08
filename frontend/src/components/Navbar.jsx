@@ -260,7 +260,7 @@ export default function Navbar() {
       
       <nav className="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16 gap-4">
+        <div className="flex justify-between items-center h-16 gap-4 relative">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2 group flex-shrink-0">
             {/* Logo Icon */}
@@ -371,7 +371,13 @@ export default function Navbar() {
                   </button>
 
                   {messagesOpen && (
-                    <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-lg border border-gray-200 py-2 max-h-96 overflow-y-auto">
+                    <div 
+                      className="fixed mt-2 w-80 bg-white rounded-xl shadow-lg border border-gray-200 py-2 max-h-96 overflow-y-auto z-[60]"
+                      style={{
+                        top: messagesRef.current ? messagesRef.current.getBoundingClientRect().bottom + 8 : '4rem',
+                        right: '1rem'
+                      }}
+                    >
                       <div className="px-4 py-2 border-b border-gray-100 flex items-center justify-between">
                         <h3 className="font-semibold text-gray-900">
                           Messages
@@ -478,7 +484,13 @@ export default function Navbar() {
                   </button>
 
                   {notificationsOpen && (
-                    <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-lg border border-gray-200 py-2 max-h-96 overflow-y-auto">
+                    <div 
+                      className="fixed mt-2 w-80 bg-white rounded-xl shadow-lg border border-gray-200 py-2 max-h-96 overflow-y-auto z-[60]"
+                      style={{
+                        top: notifRef.current ? notifRef.current.getBoundingClientRect().bottom + 8 : '4rem',
+                        right: '1rem'
+                      }}
+                    >
                       <div className="px-4 py-2 border-b border-gray-100 flex items-center justify-between">
                         <h3 className="font-semibold text-gray-900">
                           Notifications
@@ -604,13 +616,31 @@ export default function Navbar() {
                   </button>
 
                   {userMenuOpen && (
-                    <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-gray-200 py-2">
+                    <div 
+                      className="fixed mt-2 w-64 bg-white rounded-xl shadow-lg border border-gray-200 py-2 z-[60]"
+                      style={{
+                        top: userMenuRef.current ? userMenuRef.current.getBoundingClientRect().bottom + 8 : '4rem',
+                        right: '1rem'
+                      }}
+                    >
                       <div className="px-4 py-3 border-b border-gray-100">
-                        <p className="font-semibold text-gray-900">
-                          {user?.name}
-                        </p>
-                        <p className="text-sm text-gray-500">{user?.email}</p>
-                        <span className="inline-block mt-1 px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-medium rounded">
+                        <div className="flex items-center gap-3 mb-2">
+                          <img
+                            src={getAvatarUrl(user?.profile?.avatar)}
+                            alt={user?.name}
+                            onError={(e) =>
+                              (e.currentTarget.src = `https://i.pravatar.cc/40?u=${user?.id}`)
+                            }
+                            className="w-10 h-10 rounded-full object-cover flex-shrink-0"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <p className="font-semibold text-gray-900 truncate">
+                              {user?.name}
+                            </p>
+                            <p className="text-xs text-gray-500 truncate">{user?.email}</p>
+                          </div>
+                        </div>
+                        <span className="inline-block px-2 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded">
                           {user?.role === "seller" ? "Freelancer" : "Client"}
                         </span>
                       </div>

@@ -336,6 +336,7 @@ const updateOrderStatus = async (req, res) => {
 const cancelOrder = async (req, res) => {
   try {
     const { orderId } = req.params;
+    const { reason } = req.body;
     const userId = req.user.id;
 
     const order = await Order.findById(orderId).populate('job');
@@ -355,6 +356,9 @@ const cancelOrder = async (req, res) => {
     }
 
     order.status = 'cancelled';
+    if (reason) {
+      order.cancellationReason = reason;
+    }
     await order.save();
 
     // If this order is related to a job, unhire the freelancer

@@ -26,29 +26,31 @@ import './index.css';
 function App() {
   return (
     <Router>
-      <Navbar />
-      <MessageManager />
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/signup" element={<Signup />} />
-        <Route path="/seller-dashboard" element={<SellerDashboard />} />
-        <Route path="/create-gig" element={<CreateGig />} />
-        <Route path="/post-job" element={<PostJob />} />
-        <Route path="/jobs" element={<Jobs />} />
-        <Route path="/gigs" element={<Gigs />} />
-        <Route path="/gig/:id" element={<GigDetails />} />
-        <Route path="/orders" element={<OrdersPage />} />
-        <Route path="/review/:orderId" element={<ReviewPage />} />
-        <Route path="/messages" element={<MessagesList />} />
-        <Route path="/chat/:conversationId" element={<ChatWindow />} />
-        <Route path="/client-dashboard" element={<ClientDashboard />} />
-        <Route path="/profile" element={<Profile />} />
-        <Route path="/profile/:userId" element={<Profile />} />
-        <Route path="/feed" element={<Feed />} />
-        <Route path="/search" element={<SearchResults />} />
-        <Route path="/settings" element={<Settings />} />
-      </Routes>
+      <div className="min-h-screen w-full overflow-x-hidden">
+        <Navbar />
+        <MessageManager />
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<Signup />} />
+          <Route path="/seller-dashboard" element={<SellerDashboard />} />
+          <Route path="/create-gig" element={<CreateGig />} />
+          <Route path="/post-job" element={<PostJob />} />
+          <Route path="/jobs" element={<Jobs />} />
+          <Route path="/gigs" element={<Gigs />} />
+          <Route path="/gig/:id" element={<GigDetails />} />
+          <Route path="/orders" element={<OrdersPage />} />
+          <Route path="/review/:orderId" element={<ReviewPage />} />
+          <Route path="/messages" element={<MessagesList />} />
+          <Route path="/chat/:conversationId" element={<ChatWindow />} />
+          <Route path="/client-dashboard" element={<ClientDashboard />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/profile/:userId" element={<Profile />} />
+          <Route path="/feed" element={<Feed />} />
+          <Route path="/search" element={<SearchResults />} />
+          <Route path="/settings" element={<Settings />} />
+        </Routes>
+      </div>
     </Router>
   );
 }
