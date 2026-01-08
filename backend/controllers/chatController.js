@@ -302,17 +302,18 @@ const sendMessage = async (req, res) => {
         createdAt: message.createdAt
       };
 
-      // Emit to conversation room
+      // Emit ONLY to conversation room (not personal room to avoid duplicates)
+      // Users who are in the conversation will receive it here
       io.to(`conversation_${conversationId}`).emit('receive_message', messageData);
 
-      // Also emit to other participant's personal room
+      // Get other participant for notifications
       const otherParticipant = conversation.participants.find(
         p => p.toString() !== userId
       );
 
       if (otherParticipant) {
-        io.to(`user_${otherParticipant}`).emit('receive_message', messageData);
-
+        // Only send notification event (not the message itself) to personal room
+        // This is for notification badges/sounds, not for displaying the message
         try {
           const Notification = require('../models/Notification');
           const notificationMessage = trimmedText 
@@ -330,9 +331,11 @@ const sendMessage = async (req, res) => {
             relatedModel: 'Conversation'
           });
 
+          // Emit notification event to personal room for notification badge
           io.to(`user_${otherParticipant}`).emit('new_notification', {
             type: 'new_message',
-            conversationId
+            conversationId,
+            message: notificationMessage
           });
         } catch (notifErr) {
           console.error('Error creating notification:', notifErr);
