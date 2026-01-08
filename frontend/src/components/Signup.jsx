@@ -1,5 +1,5 @@
 // src/components/Signup.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import API from '../api';
 import { setAuthData } from '../utils/auth';
@@ -13,8 +13,13 @@ export default function Signup() {
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState(null);
+  const [turnstileToken, setTurnstileToken] = useState(null);
+  const turnstileRef = useRef(null);
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+
+  // Cloudflare Turnstile Site Key
+  const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY || '1x00000000000000000000AA';
 
   // Auto-set role from URL
   useEffect(() => {
@@ -23,6 +28,30 @@ export default function Signup() {
       setForm((prev) => ({ ...prev, role }));
     }
   }, [searchParams]);
+
+  // Setup Turnstile widget
+  useEffect(() => {
+    const checkTurnstile = setInterval(() => {
+      if (window.turnstile && turnstileRef.current) {
+        clearInterval(checkTurnstile);
+        
+        window.turnstile.render(turnstileRef.current, {
+          sitekey: TURNSTILE_SITE_KEY,
+          callback: (token) => {
+            setTurnstileToken(token);
+          },
+          theme: 'light',
+        });
+      }
+    }, 100);
+
+    return () => {
+      clearInterval(checkTurnstile);
+      if (window.turnstile && turnstileRef.current) {
+        window.turnstile.remove(turnstileRef.current);
+      }
+    };
+  }, []);
 
   // Validation
   const validate = () => {
@@ -41,10 +70,19 @@ export default function Signup() {
     e.preventDefault();
     if (!validate()) return;
 
+    // Check if Turnstile token exists
+    if (!turnstileToken) {
+      setToast({ message: 'Please complete the security check', type: 'error' });
+      return;
+    }
+
     setLoading(true);
     try {
       const { confirmPassword, ...data } = form;
-      const res = await API.post("/auth/signup", data);
+      const res = await API.post("/auth/signup", {
+        ...data,
+        turnstileToken: turnstileToken
+      });
 
       setAuthData(res.data.token, res.data.user);
 
@@ -125,9 +163,14 @@ export default function Signup() {
             }
           />
 
+          {/* Cloudflare Turnstile Widget */}
+          <div className="flex justify-center">
+            <div ref={turnstileRef}></div>
+          </div>
+
           <button
-            disabled={loading || !form.role}
-            className="w-full bg-blue-600 text-white p-3 rounded-lg"
+            disabled={loading || !form.role || !turnstileToken}
+            className="w-full bg-blue-600 text-white p-3 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? "Creating..." : "Create Account"}
           </button>

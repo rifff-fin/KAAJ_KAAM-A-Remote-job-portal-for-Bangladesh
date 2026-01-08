@@ -169,10 +169,15 @@
 
 /* Allow specific elements to have full width within their container */
 img,
-svg,
 video {
   max-width: 100%;
   height: auto;
+}
+
+svg {
+  max-width: 100%;
+  display: inline-block;
+  vertical-align: middle;
 }
 
 /* Ensure grids and flex containers don't overflow */
