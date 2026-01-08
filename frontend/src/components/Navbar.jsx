@@ -357,12 +357,13 @@ export default function Navbar() {
             {user ? (
               <>
                 {/* Messages */}
-                <div className="relative" ref={messagesRef}>
+                <div className="relative z-50" ref={messagesRef}>
                   <button
                     onClick={() => setMessagesOpen(!messagesOpen)}
-                    className="relative p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                    className="relative p-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition z-50 text-white font-bold"
+                    style={{ position: 'relative', zIndex: 50 }}
                   >
-                    <MessageSquare className="w-5 h-5" />
+                    💬
                     {unreadCount > 0 && (
                       <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
                         {unreadCount > 9 ? "9+" : unreadCount}
@@ -458,10 +459,11 @@ export default function Navbar() {
                 {/* Meetings */}
                 <button
                   onClick={() => setMeetingsOpen(true)}
-                  className="relative p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                  className="relative p-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition z-50 text-white font-bold"
+                  style={{ position: 'relative', zIndex: 50 }}
                   title="Upcoming Meetings"
                 >
-                  <Calendar className="w-5 h-5" />
+                  📅
                   {upcomingMeetingsCount > 0 && (
                     <span className="absolute -top-1 -right-1 bg-blue-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
                       {upcomingMeetingsCount > 9 ? "9+" : upcomingMeetingsCount}
@@ -470,12 +472,13 @@ export default function Navbar() {
                 </button>
 
                 {/* Notifications */}
-                <div className="relative" ref={notifRef}>
+                <div className="relative z-50" ref={notifRef}>
                   <button
                     onClick={() => setNotificationsOpen(!notificationsOpen)}
-                    className="relative p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                    className="relative p-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition z-50 text-white font-bold"
+                    style={{ position: 'relative', zIndex: 50 }}
                   >
-                    <Bell className="w-5 h-5" />
+                    🔔
                     {notificationCount > 0 && (
                       <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
                         {notificationCount > 9 ? "9+" : notificationCount}

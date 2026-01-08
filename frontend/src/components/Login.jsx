@@ -1,5 +1,5 @@
 // src/components/Login.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import API from '../api';
 import { setAuthData } from '../utils/auth';
@@ -10,7 +10,38 @@ export default function Login() {
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState(null);
+  const [turnstileToken, setTurnstileToken] = useState(null);
+  const turnstileRef = useRef(null);
   const navigate = useNavigate();
+
+  // Cloudflare Turnstile Site Key
+  const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY || '1x00000000000000000000AA';
+
+  // Setup Turnstile widget
+  useEffect(() => {
+    // Wait for Turnstile script to load
+    const checkTurnstile = setInterval(() => {
+      if (window.turnstile && turnstileRef.current) {
+        clearInterval(checkTurnstile);
+        
+        // Render Turnstile widget
+        window.turnstile.render(turnstileRef.current, {
+          sitekey: TURNSTILE_SITE_KEY,
+          callback: (token) => {
+            setTurnstileToken(token);
+          },
+          theme: 'light',
+        });
+      }
+    }, 100);
+
+    return () => {
+      clearInterval(checkTurnstile);
+      if (window.turnstile && turnstileRef.current) {
+        window.turnstile.remove(turnstileRef.current);
+      }
+    };
+  }, []);
 
   // Validation similar to Signup
   const validate = () => {
@@ -29,12 +60,19 @@ export default function Login() {
 
     if (!validate()) return; // stop if validation fails
 
+    // Check if Turnstile token exists
+    if (!turnstileToken) {
+      setToast({ message: 'Please complete the security check', type: 'error' });
+      return;
+    }
+
     setLoading(true);
     try {
-      // Explicitly send fields to backend
+      // Explicitly send fields to backend including Turnstile token
       const res = await API.post('/auth/login', {
         email: form.email.trim(),
         password: form.password,
+        turnstileToken: turnstileToken,
       });
 
       // Save token and user
@@ -87,10 +125,15 @@ export default function Login() {
             {errors.password && <p className="text-red-500 text-sm mt-1">{errors.password}</p>}
           </div>
 
+          {/* Cloudflare Turnstile Widget */}
+          <div className="flex justify-center">
+            <div ref={turnstileRef}></div>
+          </div>
+
           <button
             type="submit"
-            disabled={loading}
-            className="w-full bg-blue-600 text-white p-3 rounded-lg"
+            disabled={loading || !turnstileToken}
+            className="w-full bg-blue-600 text-white p-3 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? "Signing in..." : "Sign In"}
           </button>

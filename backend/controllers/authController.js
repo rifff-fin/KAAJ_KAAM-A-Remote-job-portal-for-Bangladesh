@@ -4,12 +4,13 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const cloudinary = require('../config/cloudinary');
 const fs = require('fs');
+const { verifyTurnstileToken } = require('../utils/turnstileVerify');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'kajkam-secret-2025';
 
 // ────── Signup ──────
 const signup = async (req, res) => {
-  const { name, email, password, role } = req.body;
+  const { name, email, password, role, turnstileToken } = req.body;
   try {
     // Validation
     if (!name || !email || !password) {
@@ -18,6 +19,18 @@ const signup = async (req, res) => {
     
     if (!role || !['buyer', 'seller'].includes(role)) {
       return res.status(400).json({ message: "Valid role required (buyer/seller)" });
+    }
+
+    // Verify Cloudflare Turnstile token
+    const turnstileVerification = await verifyTurnstileToken(
+      turnstileToken, 
+      req.ip || req.connection.remoteAddress
+    );
+
+    if (!turnstileVerification.success) {
+      return res.status(400).json({ 
+        message: turnstileVerification.message || "Security verification failed" 
+      });
     }
 
     // Check if email exists
@@ -56,11 +69,23 @@ const signup = async (req, res) => {
 
 // ────── Login ──────
 const login = async (req, res) => {
-  const { email, password } = req.body;
+  const { email, password, turnstileToken } = req.body;
   try {
     // Validation
     if (!email || !password) {
       return res.status(400).json({ message: "Email and password required" });
+    }
+
+    // Verify Cloudflare Turnstile token
+    const turnstileVerification = await verifyTurnstileToken(
+      turnstileToken, 
+      req.ip || req.connection.remoteAddress
+    );
+
+    if (!turnstileVerification.success) {
+      return res.status(400).json({ 
+        message: turnstileVerification.message || "Security verification failed" 
+      });
     }
 
     // Find user - explicitly select password since it's set to select: false in schema
