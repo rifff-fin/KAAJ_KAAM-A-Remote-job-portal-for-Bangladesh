@@ -9,6 +9,16 @@ const axios = require('axios');
  */
 async function verifyTurnstileToken(token, remoteip = null) {
   const secretKey = process.env.TURNSTILE_SECRET_KEY;
+  const isDevelopment = process.env.NODE_ENV === 'development' || !process.env.NODE_ENV;
+
+  // In development mode, allow skipping Turnstile if not configured properly
+  if (isDevelopment && !secretKey) {
+    console.warn('⚠️  TURNSTILE_SECRET_KEY not configured - skipping verification in development mode');
+    return { 
+      success: true, 
+      message: 'Development mode - Turnstile verification skipped' 
+    };
+  }
 
   if (!secretKey) {
     console.error('TURNSTILE_SECRET_KEY not configured in environment');
@@ -18,7 +28,15 @@ async function verifyTurnstileToken(token, remoteip = null) {
     };
   }
 
+  // In development mode, allow missing token
   if (!token) {
+    if (isDevelopment) {
+      console.warn('⚠️  Turnstile token missing - allowing in development mode');
+      return { 
+        success: true, 
+        message: 'Development mode - Turnstile token not required' 
+      };
+    }
     return { 
       success: false, 
       message: 'Turnstile token is required' 
@@ -58,6 +76,17 @@ async function verifyTurnstileToken(token, remoteip = null) {
       };
     } else {
       console.error('Turnstile verification failed:', data['error-codes']);
+      
+      // In development mode, allow failed verification
+      if (isDevelopment) {
+        console.warn('⚠️  Turnstile verification failed but allowing in development mode');
+        return { 
+          success: true, 
+          message: 'Development mode - Turnstile verification failed but allowed',
+          errorCodes: data['error-codes']
+        };
+      }
+      
       return { 
         success: false, 
         message: 'Security verification failed. Please try again.',
@@ -66,6 +95,16 @@ async function verifyTurnstileToken(token, remoteip = null) {
     }
   } catch (error) {
     console.error('Turnstile verification error:', error.message);
+    
+    // In development mode, allow errors
+    if (isDevelopment) {
+      console.warn('⚠️  Turnstile verification error but allowing in development mode');
+      return { 
+        success: true, 
+        message: 'Development mode - Turnstile service error but allowed' 
+      };
+    }
+    
     return { 
       success: false, 
       message: 'Security verification service unavailable. Please try again later.' 
