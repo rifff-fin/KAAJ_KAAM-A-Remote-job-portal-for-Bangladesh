@@ -118,7 +118,6 @@ export default function Home() {
               The easiest way to hire skilled freelancers or find remote jobs across Bangladesh.
             </p>
 
-            {/* Search Bar */}
             <div className="mb-8 max-w-lg">
               <SearchBar placeholder="Search for services, freelancers, jobs..." />
             </div>

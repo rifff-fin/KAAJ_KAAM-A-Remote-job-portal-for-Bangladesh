@@ -11,7 +11,8 @@
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "test:verbose": "jest --verbose",
-    "test:direct-messages": "jest 22201979_DirectMessages.test.ts"
+    "test:direct-messages": "jest 22201979_DirectMessages.test.ts",
+    "test:search": "jest 23201686_search.test.js"
   },
   "keywords": [],
   "author": "Abdullah Al Rifat, Farhanul Haque Mridul, Farhan Shahriar, Sajid Safiullah",
