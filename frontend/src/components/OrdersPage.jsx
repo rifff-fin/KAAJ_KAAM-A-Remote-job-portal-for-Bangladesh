@@ -165,7 +165,7 @@ const fetchReviewedOrders = async () => {
         );
       }
       
-      alert('Order accepted successfully! Payment deadline set for 7 days.');
+      setToast({ message: 'Order accepted successfully! Payment deadline set for 7 days.', type: 'success' });
       
       // Refresh orders and profile in background
       fetchOrders();
@@ -180,7 +180,7 @@ const fetchReviewedOrders = async () => {
         console.error('Error refreshing profile:', refreshErr);
       }
     } catch (err) {
-      alert(err?.response?.data?.message || 'Failed to accept order');
+      setToast({ message: err?.response?.data?.message || 'Failed to accept order', type: 'error' });
     }
   };
 
@@ -459,10 +459,10 @@ const fetchReviewedOrders = async () => {
                         onClick={async () => {
                           try {
                             await API.post(`/orders/${order._id}/delivery/accept`);
-                            alert('Delivery accepted successfully!');
+                            setToast({ message: 'Delivery accepted successfully!', type: 'success' });
                             await fetchOrders();
                           } catch (err) {
-                            alert(err?.response?.data?.message || 'Failed to accept delivery');
+                            setToast({ message: err?.response?.data?.message || 'Failed to accept delivery', type: 'error' });
                           }
                         }}
                       />
@@ -478,7 +478,7 @@ const fetchReviewedOrders = async () => {
                   )}
 
                   {/* Review Button - Shows after delivery acceptance, completion, or cancellation for both buyer and seller */}
-                  {(order.status === 'delivered' && order.delivery?.status === 'accepted') || order.status === 'completed' || order.status === 'cancelled' ? (
+                  {((order.status === 'delivered' && order.delivery?.status === 'accepted') || order.status === 'completed' || order.status === 'cancelled') ? (
                     (() => {
                       const orderId = String(order._id);
                       const isReviewed = reviewedOrders.has(orderId);
@@ -564,6 +564,7 @@ const fetchReviewedOrders = async () => {
               setSelectedOrder(null);
             }}
             onSuccess={handlePaymentSuccess}
+            setToast={setToast}
           />
         )}
       </div>

@@ -475,6 +475,7 @@ export default function ClientDashboard() {
               setSelectedOrder(null);
             }}
             onSuccess={handlePaymentSuccess}
+            setToast={setToast}
           />
         )}
       </div>
