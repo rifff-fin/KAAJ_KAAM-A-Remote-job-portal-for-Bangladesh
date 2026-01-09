@@ -8,7 +8,7 @@ const protect = (req, res, next) => {
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'kajkam-secret-2025');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'kaaj-kaam-secret-2025');
     req.user = decoded; // { id, role }
     next();
   } catch (err) {
@@ -21,7 +21,7 @@ const optionalAuth = (req, res, next) => {
   const token = req.header('x-auth-token');
   if (token) {
     try {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'kajkam-secret-2025');
+      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'kaaj-kaam-secret-2025');
       req.user = decoded; // { id, role }
     } catch (err) {
       // Invalid token, but continue without user

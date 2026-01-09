@@ -78,21 +78,27 @@ require('./sockets/chatSocket')(io);
 const { initializeMeetingReminders } = require('./utils/meetingReminders');
 const { initOrderCronJobs } = require('./utils/orderCronJobs');
 
-// Start Server
-const startServer = async () => {
-  try {
-    await connectDB();
-    server.listen(PORT, () => {
-      console.log(`✓ Server running on http://localhost:${PORT}`);
-      // Initialize meeting reminders after server starts
-      initializeMeetingReminders(io);
-      // Initialize order cron jobs
-      initOrderCronJobs();
-    });
-  } catch (err) {
-    console.error('✗ Failed to start server:', err.message);
-    process.exit(1);
-  }
-};
+// Export app and server for testing
+module.exports = app;
+module.exports.server = server;
 
-startServer();
+// Start Server (only in non-test environment)
+if (process.env.NODE_ENV !== 'test') {
+  const startServer = async () => {
+    try {
+      await connectDB();
+      server.listen(PORT, () => {
+        console.log(`✓ Server running on http://localhost:${PORT}`);
+        // Initialize meeting reminders after server starts
+        initializeMeetingReminders(io);
+        // Initialize order cron jobs
+        initOrderCronJobs();
+      });
+    } catch (err) {
+      console.error('✗ Failed to start server:', err.message);
+      process.exit(1);
+    }
+  };
+
+  startServer();
+}
