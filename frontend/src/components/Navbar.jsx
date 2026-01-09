@@ -259,18 +259,14 @@ export default function Navbar() {
       )}
       
       <nav className="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16 gap-4 relative">
-          {/* Logo */}
+      <div className="w-full px-4 sm:px-6 lg:px-8">    
+        <div className="flex items-center h-16 gap-4 relative">
           <Link to="/" className="flex items-center gap-2 group flex-shrink-0">
-            {/* Logo Icon */}
             <img
               src={logo}
               alt="KAAJ_KAAM Logo"
               className="h-10 w-10 flex-shrink-0 object-contain group-hover:scale-105 transition-transform"
             />
-
-            {/* Logo Text */}
             <div className="hidden lg:flex items-center text-3xl font-bold leading-none">
               <span className="text-black">KAAJ</span>
               <span className="text-blue-600">_KAAM</span>
@@ -278,9 +274,12 @@ export default function Navbar() {
           </Link>
 
           {/* Search Bar - Desktop */}
-          <div className="hidden md:block flex-1 max-w-xl">
+          <div className="hidden md:block flex-1 max-w-2xl">
             <SearchBar placeholder="Search users, gigs, jobs..." />
           </div>
+
+          {/* Spacer to push right items to the end */}
+          <div className="flex-1 hidden md:block"></div>
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center gap-6 flex-shrink-0">
