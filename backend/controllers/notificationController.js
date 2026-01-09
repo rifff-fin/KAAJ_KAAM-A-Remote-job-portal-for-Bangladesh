@@ -25,7 +25,7 @@ const getNotifications = async (req, res) => {
       notifications,
       total,
       unreadCount,
-      hasMore: skip + limit < total
+      hasMore: parseInt(skip) + parseInt(limit) < total
     });
   } catch (err) {
     console.error('Error in getNotifications:', err);
