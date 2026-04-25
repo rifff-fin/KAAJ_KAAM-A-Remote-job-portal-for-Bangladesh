@@ -265,11 +265,6 @@ const sendMessage = async (req, res) => {
       messageData.text = '';
     }
 
-    // Debug logging
-    console.log('Creating message with data:', JSON.stringify(messageData, null, 2));
-    console.log('Attachments type:', typeof messageData.attachments);
-    console.log('Attachments is array:', Array.isArray(messageData.attachments));
-
     const message = await Message.create(messageData);
 
     // Update conversation - use appropriate text for last message

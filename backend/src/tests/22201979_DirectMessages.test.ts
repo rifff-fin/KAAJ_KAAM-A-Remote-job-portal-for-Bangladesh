@@ -864,12 +864,15 @@ describe('Integration Tests', () => {
   test('should handle concurrent messages from multiple users', (done) => {
     const messages: any[] = [];
     let receivedCount = 0;
+    let testCompleted = false; // Flag to prevent multiple done() calls
 
     const messageHandler = (data: any) => {
       messages.push(data);
       receivedCount++;
       
-      if (receivedCount >= 2) {
+      // Only call done() once when we've received at least 2 messages
+      if (receivedCount >= 2 && !testCompleted) {
+        testCompleted = true;
         expect(messages.length).toBeGreaterThanOrEqual(2);
         done();
       }

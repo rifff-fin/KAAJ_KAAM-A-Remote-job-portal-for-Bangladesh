@@ -62,7 +62,7 @@ Desktop.ini
 uploads/
 
 # Ignore markdown files
-*.md
+.md
 /backend/node_modules/
 /frontend/node_modules/
 /node_modules/

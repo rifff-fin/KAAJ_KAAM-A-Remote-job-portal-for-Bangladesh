@@ -1,0 +1,13 @@
+{
+  "name": "kaajkaam",
+  "version": "1.0.0",
+  "description": "KAAJ_KAAM – Remote Job Portal for Bangladesh",
+  "main": "backend/index.js",
+  "scripts": {
+    "build": "cd backend && npm install",
+    "start": "cd backend && npm start"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

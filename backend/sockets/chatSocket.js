@@ -11,8 +11,6 @@ module.exports = (io) => {
   const onlineUsers = new Map();
   
   io.on('connection', (socket) => {
-    console.log('User connected:', socket.id);
-
     const userId = socket.handshake.query.userId;
     if (userId && userId !== 'undefined' && userId !== 'null') {
       socket.userId = userId;
@@ -20,8 +18,6 @@ module.exports = (io) => {
       
       // Track online user
       onlineUsers.set(userId, socket.id);
-      
-      console.log(`User ${userId} joined personal room, total online: ${onlineUsers.size}`);
       
       // Broadcast user online status
       socket.broadcast.emit('user_online', { userId });
@@ -44,11 +40,9 @@ module.exports = (io) => {
     // Join conversation room
     socket.on('join_conversation', (conversationId) => {
       if (!conversationId) {
-        console.error('No conversationId provided');
         return;
       }
       socket.join(`conversation_${conversationId}`);
-      console.log(`User ${socket.userId || 'unknown'} joined conversation: ${conversationId}`);
       
       // Notify others that user is online
       if (socket.userId) {
@@ -237,11 +231,9 @@ module.exports = (io) => {
     });
 
     socket.on('disconnect', () => {
-      console.log('User disconnected:', socket.id);
       if (socket.userId) {
         onlineUsers.delete(socket.userId);
         socket.broadcast.emit('user_offline', { userId: socket.userId });
-        console.log(`User ${socket.userId} offline, total online: ${onlineUsers.size}`);
       }
     });
   });

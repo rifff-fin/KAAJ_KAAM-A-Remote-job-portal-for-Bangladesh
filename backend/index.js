@@ -12,7 +12,12 @@ const app = express();
 const PORT = process.env.PORT || 8080;
 
 // CORS Configuration (fixed to allow multiple origins)
-const allowedOrigins = ['http://localhost:3000', 'http://localhost:5173'];
+const allowedOrigins = [
+  'http://localhost:3000',
+  'http://localhost:5173',
+  'https://kaajkaam.netlify.app',
+  'https://kaaj-kaam-a-remote-job-portal-for.onrender.com'
+];
 
 app.use(cors({
   origin: function (origin, callback) {
