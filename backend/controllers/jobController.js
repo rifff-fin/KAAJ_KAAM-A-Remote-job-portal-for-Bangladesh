@@ -270,7 +270,7 @@ exports.acceptApplication = async (req, res) => {
       try {
         await Notification.create({
           recipient: freelancerId,
-          type: 'application_accepted',
+          type: 'proposal_accepted',
           title: 'Application Accepted!',
           message: `${job.postedBy.name} accepted your application for "${job.title}". Waiting for payment.`,
           relatedId: newOrder._id,
@@ -301,7 +301,7 @@ exports.acceptApplication = async (req, res) => {
     try {
       await Notification.create({
         recipient: freelancerId,
-        type: 'application_accepted',
+        type: 'proposal_accepted',
         title: 'Application Accepted!',
         message: `${job.postedBy.name} accepted your application for "${job.title}". Waiting for payment.`,
         relatedId: order._id,
@@ -381,9 +381,9 @@ exports.rejectApplication = async (req, res) => {
     try {
       await Notification.create({
         recipient: freelancerId,
-        type: 'application_rejected',
+        type: 'proposal_rejected',
         title: 'Application Not Selected',
-        message: `Your application for \"${job.title}\" was not selected this time.`,
+        message: `Your application for "${job.title}" was not selected this time.`,
         relatedId: jobId,
         relatedModel: 'Job'
       });
